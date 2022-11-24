@@ -39,32 +39,59 @@ newtype Second = Second {runSecond :: Int} deriving (Eq, Ord)
 
 -- Exercise 1
 parseDateTime :: Parser Char DateTime
-parseDateTime = DateTime <$> parseDate <*> parseTime <*> parseUtc
+parseDateTime = DateTime <$> parseDate <* (symbol 'T') <*> parseTime <*> parseUtc
+
+
 
 parseDate :: Parser Char Date
 parseDate = Date <$> parseYear <*> parseMonth <*> parseDay
   where
-    parseYear = Year <$> integer
-    parseMonth = Month <$> integer
-    parseDay = Day <$> integer
+    parseYear = (\x y z q -> Year (x*1000 + y*100 + z *10 + q)) <$> newdigit <*> newdigit <*> newdigit <*> newdigit
+    parseMonth = (\x y -> Month (x*10 + y)) <$> newdigit <*> newdigit
+    parseDay = (\x y -> Day (x*10 + y)) <$> newdigit <*> newdigit
 
 parseTime :: Parser Char Time
 parseTime = Time <$> parseHour <*> parseMinute <*> parseSecond
   where
-    parseHour = Hour <$> integer
-    parseMinute = Minute <$> integer
-    parseSecond = Second <$> integer
+    -- parseHour :: Hour
+    --parseHour = (\x  -> Hour (read [x] )) <$> digit <* digit
+    parseHour = (\x y -> Hour (x*10 + y)) <$> newdigit <*> newdigit
+    parseMinute = (\x y -> Minute (x*10 + y)) <$> newdigit <*> newdigit
+    parseSecond = (\x y -> Second (x*10 + y)) <$> newdigit <*> newdigit
+
 
 parseUtc :: Parser Char Bool
 parseUtc = const True <$> symbol 'z'
+            <|> const False <$> epsilon
 
 -- Exercise 2
 run :: Parser a b -> [a] -> Maybe b
-run = undefined
+run parser xs | null p = Nothing
+              | otherwise = Just (fst (head p))
+  where
+    p = filter (\(_,s) -> null s) (parse parser xs) 
+
+
+-- = Just $ fst $ head (filter (\(_,s) -> null s) (parse parser xs) )
+  -- case parse parser xs of
+  --   ((res,_):_) -> Just res
+  --   _ -> Nothing
 
 -- Exercise 3
 printDateTime :: DateTime -> String
-printDateTime = undefined
+printDateTime (DateTime (Date (Year y) (Month mon) (Day d)) (Time (Hour h) (Minute min) (Second s)) u) = 
+  "year=" ++ show y ++ " month=" ++show mon ++ " day=" ++show d ++ 
+  "T" ++ " hour=" ++ show h ++ " minutes=" ++ show min ++ " seconds=" ++ show s ++ " utc=" ++showUTC
+    where
+       showUTC :: String
+       showUTC | u = "Z"
+               | otherwise = "NoUTC"
+
+printDate :: Time -> String
+printDate (Time (Hour h) (Minute min) (Second s)) = " hour=" ++ show h ++ " minutes=" ++ show min ++ " seconds=" ++ show s
+
+parsePrintDate s = fmap printDate $ run parseTime s
+
 
 -- Exercise 4
 parsePrint s = fmap printDateTime $ run parseDateTime s
