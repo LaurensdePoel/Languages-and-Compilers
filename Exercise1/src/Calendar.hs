@@ -5,10 +5,40 @@ import ParseLib.Abstract
 import Prelude hiding (sequence, ($>), (*>), (<$), (<*))
 
 -- Exercise 6
+
+{-
+
+ BEGIN:VCALENDAR
+ PRODID:-//hacksw/handcal//NONSGML v1.0//EN
+ VERSION:2.0
+ BEGIN:VEVENT
+ SUMMARY:Bastille Day Party
+ UID:19970610T172345Z-AF23B2@example.com
+ DTSTAMP:19970610T172345Z
+ DTSTART:19970714T170000Z
+ DTEND:19970715T040000Z
+ END:VEVENT
+ END:VCALENDAR
+
+-}
 data Calendar = Calendar
+{
+  prodid :: String, -- calander id?
+  version :: String,
+  event :: [Event]
+}
   deriving (Eq, Ord, Show)
 
 data Event = Event
+{
+  dtstamp     :: DateTime,
+  uid         :: String,
+  dtstart     :: DateTime,
+  dtend       :: DateTime,
+  description :: String,
+  summary     :: String,
+  location    :: String
+}
   deriving (Eq, Ord, Show)
 
 -- Exercise 7
