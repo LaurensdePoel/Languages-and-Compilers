@@ -9,8 +9,8 @@ import System.IO
 
 data Result = SyntaxError | Invalid DateTime | Valid DateTime deriving (Eq, Ord)
 
-instance Show DateTime where
-  show = printDateTime
+-- instance Show DateTime where
+--   show = printDateTime
 
 instance Show Result where
   show SyntaxError = "date/time with wrong syntax"

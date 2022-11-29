@@ -10,33 +10,33 @@ data DateTime = DateTime
     time :: Time,
     utc :: Bool
   }
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 data Date = Date
   { year :: Year,
     month :: Month,
     day :: Day
   }
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
-newtype Year = Year {runYear :: Int} deriving (Eq, Ord)
+newtype Year = Year {runYear :: Int} deriving (Eq, Ord, Show)
 
-newtype Month = Month {runMonth :: Int} deriving (Eq, Ord)
+newtype Month = Month {runMonth :: Int} deriving (Eq, Ord, Show)
 
-newtype Day = Day {runDay :: Int} deriving (Eq, Ord)
+newtype Day = Day {runDay :: Int} deriving (Eq, Ord, Show)
 
 data Time = Time
   { hour :: Hour,
     minute :: Minute,
     second :: Second
   }
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
-newtype Hour = Hour {runHour :: Int} deriving (Eq, Ord)
+newtype Hour = Hour {runHour :: Int} deriving (Eq, Ord, Show)
 
-newtype Minute = Minute {runMinute :: Int} deriving (Eq, Ord)
+newtype Minute = Minute {runMinute :: Int} deriving (Eq, Ord, Show)
 
-newtype Second = Second {runSecond :: Int} deriving (Eq, Ord)
+newtype Second = Second {runSecond :: Int} deriving (Eq, Ord, Show)
 
 -- Exercise 1
 parseDateTime :: Parser Char DateTime

@@ -21,35 +21,72 @@ import Prelude hiding (sequence, ($>), (*>), (<$), (<*))
  END:VCALENDAR
 
 -}
+
 data Calendar = Calendar
-{
-  prodid :: String, -- calander id?
-  version :: String,
-  event :: [Event]
-}
+  { prodid :: String, -- calander id?
+    version :: String,
+    event :: [Event]
+  }
   deriving (Eq, Ord, Show)
 
 data Event = Event
-{
-  dtstamp     :: DateTime,
-  uid         :: String,
-  dtstart     :: DateTime,
-  dtend       :: DateTime,
-  description :: String,
-  summary     :: String,
-  location    :: String
-}
+  { dtstamp :: DateTime,
+    uid :: String,
+    dtstart :: DateTime,
+    dtend :: DateTime,
+    description :: String,
+    summary :: String,
+    location :: String
+  }
   deriving (Eq, Ord, Show)
 
 -- Exercise 7
-data Token = Token
+data Token
+  = TDateTime DateTime
+  | TText String
+  | TKey TokenKey
   deriving (Eq, Ord, Show)
 
+data TokenKey
+  = TDTStamp
+  | TUID
+  | TDTStart
+  | TDTEnd
+  | TDescription
+  | TSummary
+  | TLocation
+  | TProdID
+  | TVersion
+  deriving (Eq, Ord, Show)
+
+tDateTime, tText, tKey :: Parser Char Token
+tDateTime = TDateTime <$> parseDateTime
+tText = TText <$> greedy1 (satisfy stillChars)
+  where
+    stillChars :: Char -> Bool
+    stillChars c = c /= '\n' || c /= '\r'
+tKey =
+  const (TKey TDTStamp) <$> token "DTSTAMP:"
+    <|> const (TKey TUID) <$> token "UID:"
+    <|> const (TKey TDTStart) <$> token "DTSTART:"
+    <|> const (TKey TDTEnd) <$> token "DTEND:"
+    <|> const (TKey TDescription) <$> token "DESCRIPTION:"
+    <|> const (TKey TSummary) <$> token "SUMMARY:"
+    <|> const (TKey TLocation) <$> token "LOCATION:"
+    <|> const (TKey TProdID) <$> token "PRODID:"
+    <|> const (TKey TVersion) <$> token "VERSION:"
+
+anyToken :: Parser Char Token
+anyToken = tDateTime <|> tText <|> tKey
+
 scanCalendar :: Parser Char [Token]
-scanCalendar = undefined
+scanCalendar = greedy anyToken <* eof
+
+dateTime :: Parser Token DateTime
+dateTime = fromDateTime <$> satisfy isDateTime
 
 parseCalendar :: Parser Token Calendar
-parseCalendar = undefined
+parseCalendar = parse
 
 recognizeCalendar :: String -> Maybe Calendar
 recognizeCalendar s = run scanCalendar s >>= run parseCalendar
