@@ -1,4 +1,17 @@
 cradle:
   cabal:
-    - path: "src"
-      component: "lib:assignment-icalendar"
+    - path: "src/Main.hs"
+      component: "assignment-icalendar:exe:icalendar"
+
+    - path: "src/Calendar.hs"
+      component: "assignment-icalendar:exe:icalendar"
+
+    - path: "src/DateTime.hs"
+      component: "assignment-icalendar:exe:icalendar"
+
+    - path: "src/Features.hs"
+      component: "assignment-icalendar:exe:icalendar"
+      
+    # - path: "src"
+    #   component: "lib:assignment-icalendar"
+

@@ -40,7 +40,7 @@ newtype Second = Second {runSecond :: Int} deriving (Eq, Ord, Show)
 
 -- Exercise 1
 parseDateTime :: Parser Char DateTime
-parseDateTime = DateTime <$> parseDate <* (symbol 'T') <*> parseTime <*> parseUtc
+parseDateTime = DateTime <$> parseDate <* symbol 'T' <*> parseTime <*> parseUtc
 
 parseDate :: Parser Char Date
 parseDate = Date <$> parseYear <*> parseMonth <*> parseDay
@@ -88,10 +88,11 @@ printDateTime (DateTime (Date (Year y) (Month mon) (Day d)) (Time (Hour h) (Minu
       | u = "Z"
       | otherwise = ""
 
-    showNum :: Int -> String
-    showNum x
-      | x < 10 = "0" ++ show x
-      | otherwise = show x
+printDate :: Time -> String
+printDate (Time (Hour h) (Minute min) (Second s)) = " hour=" ++ show h ++ " minutes=" ++ show min ++ " seconds=" ++ show s
+
+parsePrintDate s = fmap printDate $ run parseTime s
+
 
 -- Exercise 4
 parsePrint s = fmap printDateTime $ run parseDateTime s
