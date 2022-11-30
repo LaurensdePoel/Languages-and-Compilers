@@ -3,7 +3,8 @@ module Calendar where
 import DateTime
 import ParseLib.Abstract
 import Prelude hiding (sequence, ($>), (*>), (<$), (<*))
-import Data.Time.Calendar (isLeapYear, gregorianMonthLength)
+import Data.Time.Calendar (isLeapYear, gregorianMonthLength, dayOfWeek)
+import Data.Time.Calendar.OrdinalDate (fromOrdinalDate)
 
 -- Exercise 6
 
