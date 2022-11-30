@@ -39,7 +39,7 @@ newtype Second = Second {runSecond :: Int} deriving (Eq, Ord)
 
 -- Exercise 1
 parseDateTime :: Parser Char DateTime
-parseDateTime = DateTime <$> parseDate <* (symbol 'T') <*> parseTime <*> parseUtc
+parseDateTime = DateTime <$> parseDate <* symbol 'T' <*> parseTime <*> parseUtc
 
 
 
@@ -71,7 +71,6 @@ run parser xs | null p = Nothing
   where
     p = filter (\(_,s) -> null s) (parse parser xs) 
 
-
 -- = Just $ fst $ head (filter (\(_,s) -> null s) (parse parser xs) )
   -- case parse parser xs of
   --   ((res,_):_) -> Just res
@@ -91,7 +90,6 @@ printDate :: Time -> String
 printDate (Time (Hour h) (Minute min) (Second s)) = " hour=" ++ show h ++ " minutes=" ++ show min ++ " seconds=" ++ show s
 
 parsePrintDate s = fmap printDate $ run parseTime s
-
 
 -- Exercise 4
 parsePrint s = fmap printDateTime $ run parseDateTime s
