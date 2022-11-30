@@ -88,6 +88,11 @@ printDateTime (DateTime (Date (Year y) (Month mon) (Day d)) (Time (Hour h) (Minu
       | u = "Z"
       | otherwise = ""
 
+    showNum :: Int -> String
+    showNum x
+      | x < 10 = "0" ++ show x
+      | otherwise = show x
+
 printDate :: Time -> String
 printDate (Time (Hour h) (Minute min) (Second s)) = " hour=" ++ show h ++ " minutes=" ++ show min ++ " seconds=" ++ show s
 
