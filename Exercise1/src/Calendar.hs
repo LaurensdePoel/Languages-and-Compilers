@@ -74,10 +74,10 @@ data TokenKey
   | TLocation
   | TProdID
   | TVersion
-  | TBEGIN
-  | TEND
-  | TVCALENDAR
-  | TVEVENT
+  | TBEGINVCALENDAR
+  | TENDVCALENDAR
+  | TBEGINVEVENT
+  | TENDVEVENT
   deriving (Eq, Ord, Show)
 
 dateTimeToSeconds :: DateTime -> Int
@@ -113,10 +113,10 @@ tKey =
     <|> TKey TLocation <$ token "LOCATION:"
     <|> TKey TProdID <$ token "PRODID:"
     <|> TKey TVersion <$ token "VERSION:"
-    <|> TKey TBEGIN <$ token "BEGIN:"
-    <|> TKey TEND <$ token "END:"
-    <|> TKey TVCALENDAR <$ token "VCALENDAR"
-    <|> TKey TVEVENT <$ token "VEVENT"
+    <|> TKey TBEGINVCALENDAR <$ token "BEGIN:VCALENDAR" <* symbol '\n'
+    <|> TKey TENDVCALENDAR <$ token "END:VCALENDAR" <* symbol '\n'
+    <|> TKey TBEGINVEVENT <$ token "BEGIN:VEVENT" <* symbol '\n'
+    <|> TKey TENDVEVENT <$ token "END:VEVENT" <* symbol '\n'
 
 anyToken :: Parser Char Token
 anyToken = tDateTime <|> tKey <|> tText
@@ -131,7 +131,7 @@ tes3 = run scanCalendar "PRODID:test123\nVERSION:2.0\n"
 tes4 = run scanCalendar "DTSTART:19970610T172345Z\nDTEND:19970710T172345Z\n"
 
 tes2 :: Maybe Calendar
-tes2 = recognizeCalendar "PRODID:prodid2\nVERSION:vers1\nDTSTAMP:19970610T172345Z\nUID:uid\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:descr\nSUMMARY:summ\nLOCATION:loc\n"
+tes2 = recognizeCalendar "BEGIN:VCALENDAR\nPRODID:2\nVERSION:1\nBEGIN:VEVENT\nDTSTAMP:19970610T172345Z\nUID:test\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:test\nSUMMARY:test\nLOCATION:test\nEND:VEVENT\nEND:VCALENDAR\n" -- "PRODID:prodid2\nVERSION:vers1\nDTSTAMP:19970610T172345Z\nUID:uid\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:descr\nSUMMARY:summ\nLOCATION:loc\n"
 
 dateTime :: Parser Token DateTime
 dateTime = fromDateTime <$> satisfy isDateTime
@@ -166,11 +166,81 @@ fromKey :: Token -> TokenKey
 fromKey (TKey x) = x
 fromKey _ = error "fromKey"
 
+-- parseAnyEventProp :: Parser Token EventProp
+-- parseAnyEventProp = parseDtStamp <|> parseDtStart <|>
+
+parseEventProp :: Parser Token EventProp
+parseEventProp = createEventProp <$> satisfy isKey <*> satisfy isValue -- (text <|> dateTime)
+
+isValue :: Token -> Bool
+isValue (TText _) = True
+isValue (TDateTime _) = True
+isValue _ = False
+
+createEventProp :: Token -> Token -> EventProp
+createEventProp (TKey TDTStamp) (TDateTime datetime) = DTSTAMP datetime
+createEventProp (TKey TDTStart) (TDateTime datetime) = DTSTART datetime
+createEventProp (TKey TDTEnd) (TDateTime datetime) = DTEND datetime
+createEventProp (TKey TUID) (TText text) = UID text
+createEventProp (TKey TSummary) (TText text) = SUMMARY text
+createEventProp (TKey TDescription) (TText text) = DESCRIPTION text
+createEventProp (TKey TLocation) (TText text) = LOCATION text
+createEventProp _ _ = error "invalid token(s)."
+
+parseCalProp :: Parser Token CalProp
+parseCalProp = createCalProp <$> satisfy isKey <*> satisfy isValue
+
+createCalProp :: Token -> Token -> CalProp
+createCalProp (TKey TProdID) (TText text) = PRODID text
+createCalProp (TKey TVersion) (TText text) = VERSION text
+createCalProp _ _ = error "invalid tokens"
+
+getEvent :: Parser Token Event
+getEvent = Event <$ keyWord <*> greedy parseEventProp <* keyWord -- <* satisfy isNotEventEndToken <* keyWord
+
+isNotEventEndToken :: Token -> Bool
+isNotEventEndToken (TKey TENDVEVENT) = False
+isNotEventEndToken _ = True
+
+-- getEvent = (\p -> Event <$> many parseEventProp ) <$> (satisfy isEventEndToken)
+-- [TKey TDTStamp..,]
+-- 1. map over alle tokens heen die we krijgen
+-- 2. voor elke 2 moeten we een event property maken
+-- 3. dit moet gedaan worden tot de hele lijst leeg is die we krijgen.
+-- 4. hierdoor een event met een lijst van eventprops
+
+-- get event maakt een event
+-- event is een lijst van eventprops
+-- satisfy isEventEndToken pakt alle tokens tot aan endevent token
+-- parseEventToken pakt elke keer 2 tokens (keyword text/dateTime)
+
 -- event :: Parser Token Event
 -- event = Event <$ keyWord <*> dateTime <* keyWord <*> text <* keyWord <*> dateTime <* keyWord <*> dateTime <* keyWord <*> text <* keyWord <*> text <* keyWord <*> text
 
+-- beginCalendar :: Parser Token TokenKey
+-- beginCalendar = greedy (satisfy isBeginToken)
+--   where
+--     isBeginToken :: Token -> Bool
+--     isBeginToken (TKey TBEGINVCALENDAR) = False
+--     isBeginToken _ = True
+
+-- parseCalProp ::
+-- parseCalProp =
+
+-- parseCalendarData = parseCalProp <|> getEvent
+
+parseCalProps :: Parser Token [CalProp]
+parseCalProps = greedy parseCalProp -- <* satisfy isNotBeginEvent
+
+isNotBeginEvent :: Token -> Bool
+isNotBeginEvent (TKey TBEGINVEVENT) = False
+isNotBeginEvent _ = True
+
+parseEvents :: Parser Token [Event]
+parseEvents = greedy getEvent
+
 parseCalendar :: Parser Token Calendar
-parseCalendar = undefined -- Calendar <$ keyWord <*> text <* keyWord <*> text <*> many event
+parseCalendar = Calendar <$ keyWord <*> parseCalProps <*> parseEvents <* keyWord -- Calendar <$ beginCalendar <*>   -- <$ keyWord <*> text <* keyWord <*> text <*> many event
 
 recognizeCalendar :: String -> Maybe Calendar
 recognizeCalendar s = run scanCalendar s >>= run parseCalendar
