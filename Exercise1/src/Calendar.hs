@@ -1,5 +1,6 @@
 module Calendar where
 
+import Data.Maybe
 import Data.Time.Calendar (dayOfWeek, gregorianMonthLength, isLeapYear)
 import Data.Time.Calendar.OrdinalDate (fromOrdinalDate)
 import DateTime
@@ -32,30 +33,12 @@ data Calendar = Calendar
 
 data CalProp = PRODID String | VERSION String deriving (Eq, Ord, Show)
 
--- newtype ProdID = PRODID String
-
--- newtype Version = VERSION String
-
 data Event = Event
   { eventprops :: [EventProp]
   }
   deriving (Eq, Ord, Show)
 
 data EventProp = DTSTAMP DateTime | UID String | DTSTART DateTime | DTEND DateTime | DESCRIPTION String | SUMMARY String | LOCATION String deriving (Eq, Ord, Show)
-
--- newtype DtStamp = DTSTAMP DateTime
-
--- newtype Uid = UID String
-
--- newtype DtStart = DTSTART DateTime
-
--- newtype DtEnd = DTEND DateTime
-
--- newtype Description = DESCRIPTION String
-
--- newtype Summary = SUMMARY String
-
--- newtype Location = LOCATION String
 
 -- Exercise 7
 data Token
@@ -99,10 +82,11 @@ nrDaysOfYear year
 
 tDateTime, tText, tKey :: Parser Char Token
 tDateTime = TDateTime <$> parseDateTime <* symbol '\n'
-tText = TText <$> greedy1 (satisfy stillChars) <* symbol '\n'
+tText = TText <$> greedy1 (satisfy stillChars) <* symbol '\n' -- <* token "n"
+-- tText = TText <$> greedy1 digit <* symbol '\n' <* tKey -- <* symbol '\n' -- <* token "n"
   where
     stillChars :: Char -> Bool
-    stillChars c = c /= '\n' && c /= '\r'
+    stillChars c = c /= '\n' -- && c /= '\r'
 tKey =
   TKey TDTStamp <$ token "DTSTAMP:"
     <|> TKey TUID <$ token "UID:"
@@ -124,14 +108,14 @@ anyToken = tDateTime <|> tKey <|> tText
 scanCalendar :: Parser Char [Token]
 scanCalendar = greedy anyToken -- <* eof
 
-tes = run scanCalendar "BEGIN:VCALENDAR\nPRODID:2\nVERSION:1\nBEGIN:VEVENT\nDTSTAMP:19970610T172345Z\nUID:test\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:test\nSUMMARY:test\nLOCATION:test\nEND:VEVENT\nEND:VCALENDAR\n" -- "DTSTART:19970610T172345ZDTEND:19970610T172345Z"
+tes = run scanCalendar "BEGIN:VCALENDAR\nPRODID:2\ntestnewline\nVERSION:1\nBEGIN:VEVENT\nDTSTAMP:19970610T172345Z\nUID:test\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:test\nSUMMARY:test\nLOCATION:test\nEND:VEVENT\nEND:VCALENDAR\n" -- "DTSTART:19970610T172345ZDTEND:19970610T172345Z"
 
-tes3 = run scanCalendar "PRODID:test123\nVERSION:2.0\n"
+-- tes3 = run scanCalendar "PRODID:test123\nVERSION:2.0\n"
 
-tes4 = run scanCalendar "DTSTART:19970610T172345Z\nDTEND:19970710T172345Z\n"
+-- tes4 = run scanCalendar "DTSTART:19970610T172345Z\nDTEND:19970710T172345Z\n"
 
-tes2 :: Maybe Calendar
-tes2 = recognizeCalendar "BEGIN:VCALENDAR\nPRODID:2\nVERSION:1\nBEGIN:VEVENT\nDTSTAMP:19970610T172345Z\nUID:test\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:test\nSUMMARY:test\nLOCATION:test\nEND:VEVENT\nEND:VCALENDAR\n" -- "PRODID:prodid2\nVERSION:vers1\nDTSTAMP:19970610T172345Z\nUID:uid\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:descr\nSUMMARY:summ\nLOCATION:loc\n"
+-- tes2 :: Maybe Calendar
+-- tes2 = recognizeCalendar "BEGIN:VCALENDAR\nPRODID:2\nVERSION:1\nBEGIN:VEVENT\nDTSTAMP:19970610T172345Z\nUID:test\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:test\nSUMMARY:test\nLOCATION:test\nEND:VEVENT\nEND:VCALENDAR\n" -- "PRODID:prodid2\nVERSION:vers1\nDTSTAMP:19970610T172345Z\nUID:uid\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:descr\nSUMMARY:summ\nLOCATION:loc\n"
 
 dateTime :: Parser Token DateTime
 dateTime = fromDateTime <$> satisfy isDateTime
@@ -166,11 +150,8 @@ fromKey :: Token -> TokenKey
 fromKey (TKey x) = x
 fromKey _ = error "fromKey"
 
--- parseAnyEventProp :: Parser Token EventProp
--- parseAnyEventProp = parseDtStamp <|> parseDtStart <|>
-
 parseEventProp :: Parser Token EventProp
-parseEventProp = createEventProp <$> satisfy isKey <*> satisfy isValue -- (text <|> dateTime)
+parseEventProp = createEventProp <$> satisfy isKey <*> satisfy isValue
 
 isValue :: Token -> Bool
 isValue (TText _) = True
@@ -195,52 +176,25 @@ createCalProp (TKey TProdID) (TText text) = PRODID text
 createCalProp (TKey TVersion) (TText text) = VERSION text
 createCalProp _ _ = error "invalid tokens"
 
-getEvent :: Parser Token Event
+getEvent :: Parser Token (Maybe Event)
 -- getEvent = Event <$ keyWord <*> greedy parseEventProp <* keyWord -- <* satisfy isNotEventEndToken <* keyWord
 getEvent = event -- if isValidEvent event then event else event
   where
-    event = (\p -> if isValidEvent (Event p) then Event p else error "invalid event") <$ keyWord <*> greedy parseEventProp <* keyWord
-
--- isNotEventEndToken :: Token -> Bool
--- isNotEventEndToken (TKey TENDVEVENT) = False
--- isNotEventEndToken _ = True
-
--- getEvent = (\p -> Event <$> many parseEventProp ) <$> (satisfy isEventEndToken)
--- [TKey TDTStamp..,]
--- 1. map over alle tokens heen die we krijgen
--- 2. voor elke 2 moeten we een event property maken
--- 3. dit moet gedaan worden tot de hele lijst leeg is die we krijgen.
--- 4. hierdoor een event met een lijst van eventprops
-
--- get event maakt een event
--- event is een lijst van eventprops
--- satisfy isEventEndToken pakt alle tokens tot aan endevent token
--- parseEventToken pakt elke keer 2 tokens (keyword text/dateTime)
-
--- event :: Parser Token Event
--- event = Event <$ keyWord <*> dateTime <* keyWord <*> text <* keyWord <*> dateTime <* keyWord <*> dateTime <* keyWord <*> text <* keyWord <*> text <* keyWord <*> text
-
--- beginCalendar :: Parser Token TokenKey
--- beginCalendar = greedy (satisfy isBeginToken)
---   where
---     isBeginToken :: Token -> Bool
---     isBeginToken (TKey TBEGINVCALENDAR) = False
---     isBeginToken _ = True
-
--- parseCalProp ::
--- parseCalProp =
-
--- parseCalendarData = parseCalProp <|> getEvent
+    event = (\p -> if isValidEvent (Event p) then Just $ Event p else Nothing) <$ keyWord <*> greedy parseEventProp <* keyWord
 
 parseCalProps :: Parser Token [CalProp]
-parseCalProps = (\p -> if isValidCalProps p then p else error "invalid cal properties") <$> greedy parseCalProp -- <* satisfy isNotBeginEvent
+parseCalProps = (\p -> if isValidCalProps p then p else empty) <$> greedy parseCalProp -- <* satisfy isNotBeginEvent
 
--- isNotBeginEvent :: Token -> Bool
--- isNotBeginEvent (TKey TBEGINVEVENT) = False
--- isNotBeginEvent _ = True
+-- fromJust :: Maybe Event -> Event
+-- fromJust (Just x) = x
+-- fromJust Nothing = error "invalid event"
+
+mm :: [Maybe Event] -> [Event]
+-- mm = mapMaybe (\p -> if isJust p then p else empty)
+mm xs = if all (\p -> if isJust p then True else False) xs then mapMaybe (\p -> if isJust p then p else empty) xs else empty
 
 parseEvents :: Parser Token [Event]
-parseEvents = greedy getEvent
+parseEvents = mm <$> greedy getEvent
 
 -- parseEvents :: Parser Token [Event]
 -- parseEvents = greedy (ev)
@@ -250,23 +204,10 @@ parseEvents = greedy getEvent
 --           Just x -> x
 
 parseCalendar :: Parser Token Calendar
-parseCalendar = Calendar <$ keyWord <*> parseCalProps <*> parseEvents <* keyWord -- Calendar <$ beginCalendar <*>   -- <$ keyWord <*> text <* keyWord <*> text <*> many event
+parseCalendar = (\c e -> if null c || null e then Calendar empty empty else Calendar c e) <$ keyWord <*> parseCalProps <*> parseEvents <* keyWord -- Calendar <$ beginCalendar <*>   -- <$ keyWord <*> text <* keyWord <*> text <*> many event
 
 recognizeCalendar :: String -> Maybe Calendar
 recognizeCalendar s = run scanCalendar s >>= run parseCalendar
-
--- tes7 = (UID "test") `elem` [UID "test", SUMMARY "testtest"]
-
--- tes8 = (length $ filter (\p -> p == (UID "test")) [UID "test", SUMMARY "testtest"]) == 1
-
--- occurrences :: EventProp -> [EventProp] -> Int
--- occurrences ep [] = 0
--- occurrences ep (x : xs) =
---   case x of
---     (UID _) -> 1 + occurrences ep xs
---     _ -> occurrences ep xs
-
-tes9 = isValidEvent Event {eventprops = [UID "test", SUMMARY "testtest", DTSTAMP testStartDate, DTSTART testStartDate, DTEND testStartDate]}
 
 data EventPropsOccurrences = EventPropsOccurrences
   { rDtStamp :: Int,
@@ -374,42 +315,6 @@ testCalendar =
         ]
     }
 
-testEvent :: Event
-testEvent =
-  Event
-    { eventprops =
-        [ DTSTAMP (DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True),
-          UID "19970610T172345Z-AF23B2@example.com",
-          DTEND (DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 19) (Minute 20) (Second 00)) True),
-          DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 17) (Minute 00) (Second 00)) True),
-          SUMMARY "Bastille"
-        ]
-    }
-
--- { prodid = "-//hacksw/handcal//NONSGML v1.0//EN",
---   version = "2.0",
---   events =
---     [ Event
---         { dtstamp = DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True,
---           uid = "19970610T172345Z-AF23B2@example.com",
---           dtstart = DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 17) (Minute 00) (Second 00)) True,
---           dtend = DateTime (Date (Year 1997) (Month 07) (Day 15)) (Time (Hour 03) (Minute 00) (Second 00)) True,
---           description = "",
---           summary = "Bastille",
---           location = ""
---         },
---       Event
---         { dtstamp = DateTime (Date (Year 1997) (Month 02) (Day 10)) (Time (Hour 07) (Minute 23) (Second 45)) True,
---           uid = "1997061175Z-AF23B2@example.com",
---           dtstart = DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 17) (Minute 00) (Second 00)) True,
---           dtend = DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 05) (Minute 00) (Second 00)) True,
---           description = "",
---           summary = "Bastille  Party",
---           location = ""
---         }
---     ]
--- }
-
 printCalendar :: Calendar -> String
 printCalendar Calendar {calprop = _calprop, events = _events} =
   "BEGIN:VCALENDAR \r\n"
@@ -435,55 +340,3 @@ printCalendar Calendar {calprop = _calprop, events = _events} =
         eventPropToString (SUMMARY x) = "SUMMARY:" ++ x ++ "\r\n"
         eventPropToString (DESCRIPTION x) = "DESCRIPTION:" ++ x ++ "\r\n"
         eventPropToString (LOCATION x) = "LOCATION:" ++ x ++ "\r\n"
-
--- printCalendar Calendar {prodid = _prodid, version = _version, events = _events} =
---   "BEGIN:VCALENDAR \r\n"
---     ++ "PRODID:"
---     ++ _prodid
---     ++ "\r\n"
---     ++ "VERSION:"
---     ++ _version
---     ++ "\r\n"
---     ++ concatMap printEvent _events
---     ++ "END:VCALENDAR \r\n"
---   where
---     printEvent :: Event -> String
---     printEvent
---       Event
---         { dtstamp = _dtstamp,
---           uid = _uid,
---           dtstart = _dtstart,
---           dtend = _dtend,
---           description = _description,
---           summary = _summary,
---           location = _location
---         } =
---         "BEGIN:VEVENT \r\n"
---           ++ "SUMMARY:"
---           ++ _summary
---           ++ "\r\n"
---           ++ "UID:"
---           ++ _uid
---           ++ "\r\n"
---           ++ "LOCATION:"
---           ++ _location
---           ++ "\r\n"
---           ++ "DESCRIPTION:"
---           ++ _description
---           ++ "\r\n"
---           ++ "DTSTAMP:"
---           ++ printDateTime _dtstamp
---           ++ "\r\n"
---           ++ "DTSTART:"
---           ++ printDateTime _dtstart
---           ++ "\r\n"
---           ++ "DTEND:"
---           ++ printDateTime _dtend
---           ++ "\r\n"
---           ++ "END:VEVENT \r\n"
-
-tes5 = case tes2 of
-  Nothing -> ""
-  Just x -> printCalendar x
-
-tes6 = printCalendar testCalendar
