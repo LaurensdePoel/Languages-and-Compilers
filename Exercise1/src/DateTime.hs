@@ -38,6 +38,7 @@ newtype Minute = Minute {runMinute :: Int} deriving (Eq, Ord, Show)
 
 newtype Second = Second {runSecond :: Int} deriving (Eq, Ord, Show)
 
+----------------------------------------------------------------------------------------------------------
 -- Exercise 1
 parseDateTime :: Parser Char DateTime
 parseDateTime = DateTime <$> parseDate <* symbol 'T' <*> parseTime <*> parseUtc
@@ -52,8 +53,6 @@ parseDate = Date <$> parseYear <*> parseMonth <*> parseDay
 parseTime :: Parser Char Time
 parseTime = Time <$> parseHour <*> parseMinute <*> parseSecond
   where
-    -- parseHour :: Hour
-    -- parseHour = (\x  -> Hour (read [x] )) <$> digit <* digit
     parseHour = (\x y -> Hour (x * 10 + y)) <$> newdigit <*> newdigit
     parseMinute = (\x y -> Minute (x * 10 + y)) <$> newdigit <*> newdigit
     parseSecond = (\x y -> Second (x * 10 + y)) <$> newdigit <*> newdigit
@@ -63,6 +62,7 @@ parseUtc =
   const True <$> symbol 'Z'
     <|> const False <$> epsilon
 
+----------------------------------------------------------------------------------------------------------
 -- Exercise 2
 run :: Parser a b -> [a] -> Maybe b
 run parser xs
@@ -71,6 +71,7 @@ run parser xs
   where
     p = filter (\(_, s) -> null s) (parse parser xs)
 
+----------------------------------------------------------------------------------------------------------
 -- Exercise 3
 printDateTime :: DateTime -> String
 printDateTime (DateTime (Date (Year y) (Month mon) (Day d)) (Time (Hour h) (Minute min) (Second s)) u) =
@@ -99,10 +100,26 @@ printDate (Time (Hour h) (Minute min) (Second s)) = " hour=" ++ show h ++ " minu
 parsePrintDate s = fmap printDate $ run parseTime s
 
 
+----------------------------------------------------------------------------------------------------------
 -- Exercise 4
+-- To test exercise 1 to 3 run the folowing commands:
+-- parsePrint "19970610T172345Z"
+-- parsePrint "20111012T083945"
+-- parsePrint "20040230T431337Z"
+
+parsePrint :: String -> Maybe String
 parsePrint s = fmap printDateTime $ run parseDateTime s
 
+----------------------------------------------------------------------------------------------------------
 -- Exercise 5
+-- To test exercise 5 run the following commadns:
+-- parseCheck "19970610T172345Z" -> True
+-- parseCheck "20040230T431337Z" -> False
+-- parseCheck "20040229T030000"  -> True
+--
+parseCheck :: String -> Maybe Bool
+parseCheck s = checkDateTime <$> run parseDateTime s
+
 checkDateTime :: DateTime -> Bool
 checkDateTime (DateTime date time _) = isValidDate date && isValidTime time
   where

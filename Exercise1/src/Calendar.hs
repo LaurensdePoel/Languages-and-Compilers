@@ -8,23 +8,6 @@ import ParseLib.Abstract
 import Prelude hiding (sequence, ($>), (*>), (<$), (<*))
 
 -- Exercise 6
-
-{-
-
- BEGIN:VCALENDAR
- PRODID:-//hacksw/handcal//NONSGML v1.0//EN
- VERSION:2.0
- BEGIN:VEVENT
- SUMMARY:Bastille Day Party
- UID:19970610T172345Z-AF23B2@example.com
- DTSTAMP:19970610T172345Z
- DTSTART:19970714T170000Z
- DTEND:19970715T040000Z
- END:VEVENT
- END:VCALENDAR
-
--}
-
 data Calendar = Calendar
   { calprop :: [CalProp],
     events :: [Event]
@@ -33,14 +16,10 @@ data Calendar = Calendar
 
 data CalProp = PRODID String | VERSION String deriving (Eq, Ord, Show)
 
-data Event = Event
-  { eventprops :: [EventProp]
-  }
-  deriving (Eq, Ord, Show)
-
+data Event = Event { eventprops :: [EventProp]} deriving (Eq, Ord, Show)
+  
 data EventProp = DTSTAMP DateTime | UID String | DTSTART DateTime | DTEND DateTime | DESCRIPTION String | SUMMARY String | LOCATION String deriving (Eq, Ord, Show)
 
--- Exercise 7
 data Token
   = TDateTime DateTime
   | TText String
@@ -63,48 +42,83 @@ data TokenKey
   | TENDVEVENT
   deriving (Eq, Ord, Show)
 
-dateTimeToSeconds :: DateTime -> Int
-dateTimeToSeconds DateTime {date = Date {year = _year, month = _month, day = _day}, time = Time {hour = _hour, minute = _minute, second = _second}} =
-  runSecond _second
-    + runMinute _minute * 60
-    + runHour _hour * 60 * 60
-    + runDay _day * 24 * 60 * 60
-    + nrDaysOfMonth _year _month * 24 * 60 * 60
-    + nrDaysOfYear (runYear _year) * 24 * 60 * 60
+----------------------------------------------------------------------------------------------------------
 
-nrDaysOfMonth :: Year -> Month -> Int
-nrDaysOfMonth year month = gregorianMonthLength (fromIntegral (runYear year)) (runMonth month)
+-- Exercise 7
+-- To test the scanCalendar run the following command:
+-- testScanCalendar
+-- To test the recognizeCalendar run the following command:
+-- testRecognizeCalendar
 
-addDay :: Date -> Date
-addDay date@Date {year=_year, month=_month, day=_day} 
-  | endOfMonth && endOfYear = date {year = Year (runYear _year +1), month = Month 0, day = Day 0}
-  | endOfMonth = date {month = Month (runMonth _month+ 1), day = Day 0}
-  | otherwise = date {day = Day (runDay _day+ 1)}
-    where
-      endOfMonth = nrDaysOfMonth _year _month == runDay _day
-      endOfYear = runMonth _month == 12
+testScanCalendar :: Maybe [Token]
+testScanCalendar = run scanCalendar "BEGIN:VCALENDAR\nPRODID:2\ntestnewline\nVERSION:1\nBEGIN:VEVENT\nDTSTAMP:19970610T172345Z\nUID:test\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:test\nSUMMARY:test\nLOCATION:test\nEND:VEVENT\nEND:VCALENDAR\n"
 
-toLastDayOfTheMonth :: Date -> Date
-toLastDayOfTheMonth date@Date {year=_year, month=_month, day=_day}  = date {day = Day $ nrDaysOfMonth _year _month }
+testRecognizeCalendar :: Maybe Calendar
+testRecognizeCalendar = recognizeCalendar "BEGIN:VCALENDAR\nPRODID:2\nVERSION:1\nBEGIN:VEVENT\nDTSTAMP:19970610T172345Z\nUID:test\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:test\nSUMMARY:test\nLOCATION:test\nEND:VEVENT\nEND:VCALENDAR\n"
+----------------------------------------------------------------------------------------------------------
 
-midnight :: Time
-midnight = Time {hour=Hour 23, minute=Minute 59, second=Second 59}
-morning :: Time
-morning = Time {hour=Hour 00, minute=Minute 00, second=Second 00}
+-- Exercise 8
+-- To test exercise 8 run the following command:
+-- putStrLn $ printCalendar testCalendar
+printCalendar :: Calendar -> String
+printCalendar Calendar {calprop = _calprop, events = _events} =
+  "BEGIN:VCALENDAR \r\n"
+    ++ concatMap calPropToString _calprop
+    ++ concatMap eventToString _events
+    ++ "END:VCALENDAR \r\n"
+  where
+    calPropToString :: CalProp -> String
+    calPropToString (PRODID x) = "PRODID:" ++ x ++ "\r\n"
+    calPropToString (VERSION x) = "VERSION:" ++ x ++ "\r\n"
+
+    eventToString :: Event -> String
+    eventToString Event {eventprops = _eventprops} =
+      "BEGIN:VEVENT \r\n"
+        ++ concatMap eventPropToString _eventprops
+        ++ "END:VEVENT \r\n"
+      where
+        eventPropToString :: EventProp -> String
+        eventPropToString (DTSTAMP x) = "DTSTAMP:" ++ printDateTime x ++ "\r\n"
+        eventPropToString (UID x) = "UID:" ++ x ++ "\r\n"
+        eventPropToString (DTSTART x) = "DTSTART:" ++ printDateTime x ++ "\r\n"
+        eventPropToString (DTEND x) = "DTEND:" ++ printDateTime x ++ "\r\n"
+        eventPropToString (SUMMARY x) = "SUMMARY:" ++ x ++ "\r\n"
+        eventPropToString (DESCRIPTION x) = "DESCRIPTION:" ++ x ++ "\r\n"
+        eventPropToString (LOCATION x) = "LOCATION:" ++ x ++ "\r\n"
 
 
-nrDaysOfYear :: Int -> Int
-nrDaysOfYear year
-  | isLeapYear (fromIntegral year - 1970) = 366
-  | otherwise = 365
+----------------------------------------------------------------------------------------------------------
+-- Helper functions scanCalendar (lexer)
+----------------------------------------------------------------------------------------------------------
+-- Mac/Linux version
+-- tDateTime, tText, tKey :: Parser Char Token
+-- tDateTime = TDateTime <$> parseDateTime <* token "\r\n"
+-- tText = TText <$> greedy1 (satisfy stillChars) <* token "\r\n" 
+--   where
+--     stillChars :: Char -> Bool
+--     stillChars c = c /= '\r'
+-- tKey =
+--   TKey TDTStamp <$ token "DTSTAMP:"
+--     <|> TKey TUID <$ token "UID:"
+--     <|> TKey TDTStart <$ token "DTSTART:"
+--     <|> TKey TDTEnd <$ token "DTEND:"
+--     <|> TKey TDescription <$ token "DESCRIPTION:"
+--     <|> TKey TSummary <$ token "SUMMARY:"
+--     <|> TKey TLocation <$ token "LOCATION:"
+--     <|> TKey TProdID <$ token "PRODID:"
+--     <|> TKey TVersion <$ token "VERSION:"
+--     <|> TKey TBEGINVCALENDAR <$ token "BEGIN:VCALENDAR" <* token "\r\n"
+--     <|> TKey TENDVCALENDAR <$ token "END:VCALENDAR" <* token "\r\n"
+--     <|> TKey TBEGINVEVENT <$ token "BEGIN:VEVENT" <* token "\r\n"
+--     <|> TKey TENDVEVENT <$ token "END:VEVENT" <* token "\r\n"
 
+-- Windows Version
 tDateTime, tText, tKey :: Parser Char Token
 tDateTime = TDateTime <$> parseDateTime <* symbol '\n'
-tText = TText <$> greedy1 (satisfy stillChars) <* symbol '\n' -- <* token "n"
--- tText = TText <$> greedy1 digit <* symbol '\n' <* tKey -- <* symbol '\n' -- <* token "n"
+tText = TText <$> greedy1 (satisfy stillChars) <* symbol '\n'
   where
     stillChars :: Char -> Bool
-    stillChars c = c /= '\n' -- && c /= '\r'
+    stillChars c = c /= '\n' && c /= '\r'
 tKey =
   TKey TDTStamp <$ token "DTSTAMP:"
     <|> TKey TUID <$ token "UID:"
@@ -124,17 +138,11 @@ anyToken :: Parser Char Token
 anyToken = tDateTime <|> tKey <|> tText
 
 scanCalendar :: Parser Char [Token]
-scanCalendar = greedy anyToken -- <* eof
+scanCalendar = greedy anyToken
 
-tes = run scanCalendar "BEGIN:VCALENDAR\nPRODID:2\ntestnewline\nVERSION:1\nBEGIN:VEVENT\nDTSTAMP:19970610T172345Z\nUID:test\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:test\nSUMMARY:test\nLOCATION:test\nEND:VEVENT\nEND:VCALENDAR\n" -- "DTSTART:19970610T172345ZDTEND:19970610T172345Z"
-
--- tes3 = run scanCalendar "PRODID:test123\nVERSION:2.0\n"
-
--- tes4 = run scanCalendar "DTSTART:19970610T172345Z\nDTEND:19970710T172345Z\n"
-
--- tes2 :: Maybe Calendar
--- tes2 = recognizeCalendar "BEGIN:VCALENDAR\nPRODID:2\nVERSION:1\nBEGIN:VEVENT\nDTSTAMP:19970610T172345Z\nUID:test\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:test\nSUMMARY:test\nLOCATION:test\nEND:VEVENT\nEND:VCALENDAR\n" -- "PRODID:prodid2\nVERSION:vers1\nDTSTAMP:19970610T172345Z\nUID:uid\nDTSTART:19970610T172345Z\nDTEND:19970710T172345Z\nDESCRIPTION:descr\nSUMMARY:summ\nLOCATION:loc\n"
-
+----------------------------------------------------------------------------------------------------------
+-- Helper Functions for the parseCalendar
+----------------------------------------------------------------------------------------------------------
 dateTime :: Parser Token DateTime
 dateTime = fromDateTime <$> satisfy isDateTime
 
@@ -195,37 +203,20 @@ createCalProp (TKey TVersion) (TText text) = VERSION text
 createCalProp _ _ = error "invalid tokens"
 
 getEvent :: Parser Token (Maybe Event)
--- getEvent = Event <$ keyWord <*> greedy parseEventProp <* keyWord -- <* satisfy isNotEventEndToken <* keyWord
-getEvent = event -- if isValidEvent event then event else event
-  where
-    event = (\p -> if isValidEvent (Event p) then Just $ Event p else Nothing) <$ keyWord <*> greedy parseEventProp <* keyWord
+getEvent = (\p -> if isValidEvent (Event p) then Just $ Event p else Nothing) <$ keyWord <*> greedy parseEventProp <* keyWord
 
 parseCalProps :: Parser Token [CalProp]
-parseCalProps = (\p -> if isValidCalProps p then p else empty) <$> greedy parseCalProp -- <* satisfy isNotBeginEvent
+parseCalProps = (\p -> if isValidCalProps p then p else empty) <$> greedy parseCalProp 
 
--- fromJust :: Maybe Event -> Event
--- fromJust (Just x) = x
--- fromJust Nothing = error "invalid event"
-
-mm :: [Maybe Event] -> [Event]
--- mm = mapMaybe (\p -> if isJust p then p else empty)
-mm xs = if all (\p -> if isJust p then True else False) xs then mapMaybe (\p -> if isJust p then p else empty) xs else empty
+eventValidation :: [Maybe Event] -> [Event]
+eventValidation xs = if all isJust xs then mapMaybe (\p -> if isJust p then p else empty) xs else empty
 
 parseEvents :: Parser Token [Event]
-parseEvents = mm <$> greedy getEvent
+parseEvents = eventValidation <$> greedy getEvent
 
--- parseEvents :: Parser Token [Event]
--- parseEvents = greedy (ev)
---   where
---     ev = case getEvent of
---           Nothing -> getEvent <* eof
---           Just x -> x
-
-parseCalendar :: Parser Token Calendar
-parseCalendar = (\c e -> if null c || null e then Calendar empty empty else Calendar c e) <$ keyWord <*> parseCalProps <*> parseEvents <* keyWord -- Calendar <$ beginCalendar <*>   -- <$ keyWord <*> text <* keyWord <*> text <*> many event
-
-recognizeCalendar :: String -> Maybe Calendar
-recognizeCalendar s = run scanCalendar s >>= run parseCalendar
+----------------------------------------------------------------------------------------------------------
+-- Helper functions to check if The calendar is valid
+----------------------------------------------------------------------------------------------------------
 
 data EventPropsOccurrences = EventPropsOccurrences
   { rDtStamp :: Int,
@@ -303,19 +294,52 @@ isValidCalProps prop =
           }
         prop
 
--- Exercise 8
-testStartDate :: DateTime
-testStartDate = DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 17) (Minute 00) (Second 00)) True
+parseCalendar :: Parser Token Calendar
+parseCalendar = (\c e -> if null c || null e then Calendar empty empty else Calendar c e) <$ keyWord <*> parseCalProps <*> parseEvents <* keyWord 
 
-testInbetweenDate :: DateTime
-testInbetweenDate = DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 20) (Minute 05) (Second 10)) True
+recognizeCalendar :: String -> Maybe Calendar
+recognizeCalendar s = run scanCalendar s >>= run parseCalendar
 
-testEndDate :: DateTime
-testEndDate = DateTime (Date (Year 1997) (Month 07) (Day 15)) (Time (Hour 03) (Minute 00) (Second 00)) True
+----------------------------------------------------------------------------------------------------
+-- Global Helper functions
+----------------------------------------------------------------------------------------------------
+dateTimeToSeconds :: DateTime -> Int
+dateTimeToSeconds DateTime {date = Date {year = _year, month = _month, day = _day}, time = Time {hour = _hour, minute = _minute, second = _second}} =
+  runSecond _second
+    + runMinute _minute * 60
+    + runHour _hour * 60 * 60
+    + runDay _day * 24 * 60 * 60
+    + nrDaysOfMonth _year _month * 24 * 60 * 60
+    + nrDaysOfYear (runYear _year) * 24 * 60 * 60
 
-testOutSideDate :: DateTime
-testOutSideDate = DateTime (Date (Year 1997) (Month 05) (Day 15)) (Time (Hour 04) (Minute 00) (Second 00)) True
+nrDaysOfMonth :: Year -> Month -> Int
+nrDaysOfMonth year month = gregorianMonthLength (fromIntegral (runYear year)) (runMonth month)
 
+addDay :: Date -> Date
+addDay date@Date {year=_year, month=_month, day=_day} 
+  | endOfMonth && endOfYear = date {year = Year (runYear _year +1), month = Month 0, day = Day 0}
+  | endOfMonth = date {month = Month (runMonth _month+ 1), day = Day 0}
+  | otherwise = date {day = Day (runDay _day+ 1)}
+    where
+      endOfMonth = nrDaysOfMonth _year _month == runDay _day
+      endOfYear = runMonth _month == 12
+
+toLastDayOfTheMonth :: Date -> Date
+toLastDayOfTheMonth date@Date {year=_year, month=_month, day=_day}  = date {day = Day $ nrDaysOfMonth _year _month }
+
+midnight :: Time
+midnight = Time {hour=Hour 23, minute=Minute 59, second=Second 59}
+morning :: Time
+morning = Time {hour=Hour 00, minute=Minute 00, second=Second 00}
+
+nrDaysOfYear :: Int -> Int
+nrDaysOfYear year
+  | isLeapYear (fromIntegral year - 1970) = 366
+  | otherwise = 365
+
+----------------------------------------------------------------------------------------------------------
+-- Test calendar used for testing the exercises without a parser
+----------------------------------------------------------------------------------------------------------
 testCalendar :: Calendar
 testCalendar =
   Calendar
@@ -324,16 +348,16 @@ testCalendar =
         [ Event
             { eventprops =
                 [ DTSTAMP (DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True),
-                  UID "19970610T172345Z-AF23B2@example.com",
+                  UID "1997aa0610T172345Z-AF23B2@example.com",
                   DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 17) (Minute 00) (Second 00)) True),
                   DTEND (DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 19) (Minute 00) (Second 00)) True),
-                  SUMMARY "Bastille"
+                  SUMMARY "Single Event ON 07-14"
                 ]
             },
           Event
             { eventprops =
                 [ DTSTAMP (DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True),
-                  UID "19970610T172345Z-AF23B2@example.com",
+                  UID "19970610T1723as45Z-AF23B2@example.com",
                   DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 16)) (Time (Hour 12) (Minute 00) (Second 00)) True),
                   DTEND (DateTime (Date (Year 1997) (Month 07) (Day 16)) (Time (Hour 16) (Minute 30) (Second 00)) True),
                   SUMMARY "Bastille"
@@ -342,16 +366,16 @@ testCalendar =
             Event
             { eventprops =
                 [ DTSTAMP (DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True),
-                  UID "19970610T172345Z-AF23B2@example.com",
-                  DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 16)) (Time (Hour 17) (Minute 30) (Second 00)) True),
-                  DTEND (DateTime (Date (Year 1997) (Month 08) (Day 17)) (Time (Hour 19) (Minute 45) (Second 00)) True),
+                  UID "19970610T1af72345Z-AF23fdB2@example.com",
+                  DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 29)) (Time (Hour 06) (Minute 30) (Second 00)) True),
+                  DTEND (DateTime (Date (Year 1997) (Month 08) (Day 04)) (Time (Hour 19) (Minute 45) (Second 00)) True),
                   SUMMARY "Kaas"
                 ]
             },
             Event
             { eventprops =
                 [ DTSTAMP (DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True),
-                  UID "19970610T172345Z-AF23B2@example.com",
+                  UID "19970610T172Z-AF23B2@example.com",
                   DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 18)) (Time (Hour 12) (Minute 00) (Second 00)) True),
                   DTEND (DateTime (Date (Year 1997) (Month 07) (Day 18)) (Time (Hour 16) (Minute 30) (Second 00)) True),
                   SUMMARY "Bastille"
@@ -360,7 +384,7 @@ testCalendar =
             Event
             { eventprops =
                 [ DTSTAMP (DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True),
-                  UID "19970610T172345Z-AF23B2@example.com",
+                  UID "19970T172345Z-AF23B2@example.com",
                   DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 18)) (Time (Hour 10) (Minute 00) (Second 00)) True),
                   DTEND (DateTime (Date (Year 1997) (Month 07) (Day 18)) (Time (Hour 16) (Minute 30) (Second 00)) True),
                   SUMMARY "Bastille"
@@ -368,29 +392,3 @@ testCalendar =
             }
         ]
     }
-
-printCalendar :: Calendar -> String
-printCalendar Calendar {calprop = _calprop, events = _events} =
-  "BEGIN:VCALENDAR \r\n"
-    ++ concatMap calPropToString _calprop
-    ++ concatMap eventToString _events
-    ++ "END:VCALENDAR \r\n"
-  where
-    calPropToString :: CalProp -> String
-    calPropToString (PRODID x) = "PRODID:" ++ x ++ "\r\n"
-    calPropToString (VERSION x) = "VERSION:" ++ x ++ "\r\n"
-
-    eventToString :: Event -> String
-    eventToString Event {eventprops = _eventprops} =
-      "BEGIN:VEVENT \r\n"
-        ++ concatMap eventPropToString _eventprops
-        ++ "END:VEVENT \r\n"
-      where
-        eventPropToString :: EventProp -> String
-        eventPropToString (DTSTAMP x) = "DTSTAMP:" ++ printDateTime x ++ "\r\n"
-        eventPropToString (UID x) = "UID:" ++ x ++ "\r\n"
-        eventPropToString (DTSTART x) = "DTSTART:" ++ printDateTime x ++ "\r\n"
-        eventPropToString (DTEND x) = "DTEND:" ++ printDateTime x ++ "\r\n"
-        eventPropToString (SUMMARY x) = "SUMMARY:" ++ x ++ "\r\n"
-        eventPropToString (DESCRIPTION x) = "DESCRIPTION:" ++ x ++ "\r\n"
-        eventPropToString (LOCATION x) = "LOCATION:" ++ x ++ "\r\n"

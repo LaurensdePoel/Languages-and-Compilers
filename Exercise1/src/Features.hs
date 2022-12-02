@@ -7,13 +7,72 @@ import Data.Map as M
 import DateTime
 import Text.PrettyPrint.Boxes
 
+
+--------------------------------------------------------------------------------------------------
 -- Exercise 9
+-- To test all the functions of exercise 9:
+
+-- countEvents testCalendar -> 5 events in test calendar
+
+-- findEvents testStartDate testCalendar
+
+-- checkOverlapping testCalendar
+
+-- timeSpent "niks" testCalendar 
+-- timeSpent "Bastille" testCalendar 
+
 countEvents :: Calendar -> Int
 countEvents Calendar {events = _events} = length _events
 
 findEvents :: DateTime -> Calendar -> [Event]
 findEvents datetime Calendar {events = _events} =
   P.filter (isTimeBetweenEvent datetime) _events
+
+checkOverlapping :: Calendar -> Bool
+checkOverlapping Calendar {events = _events} =
+  any
+    ( \event ->
+        let (start, end) = (getEventStartDateTime event, getEventEndDateTime event)
+         in any (\_event -> isTimeBetweenEvent start _event && _event /= event) _events
+              || any (\_event -> isTimeBetweenEvent end _event && _event /= event) _events
+    )
+    _events
+
+timeSpent :: String -> Calendar -> Int
+timeSpent checkSummary Calendar {events = _events} = P.foldr (\x res -> res + eventTime x) 0 filteredEvents `div` 60
+  where
+    filteredEvents = P.filter (\event -> getEventSummary event == checkSummary) _events
+    eventTime :: Event -> Int
+    eventTime event = dateTimeToSeconds end - dateTimeToSeconds start
+      where
+        (start, end) = (getEventStartDateTime event, getEventEndDateTime event)
+
+----------------------------------------------------------------------------------------------------
+-- To test exercise 10 run the following command
+-- putStrLn $ ppMonth (Year 1997) (Month 7) testCalendar
+
+-- In this example the times are orded from top to down on each day. 
+-- When events last multible days it is carried over to the next day. 
+ppMonth :: Year -> Month -> Calendar -> String
+ppMonth year month Calendar {events = _events} =
+    P.concatMap (\week -> printWeek week year month) weeks ++ printBorder
+  where
+    weeks = createWeeks year month
+
+----------------------------------------------------------------------------------------------------
+-- Helper functions exercise 9
+----------------------------------------------------------------------------------------------------
+testStartDate :: DateTime
+testStartDate = DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 17) (Minute 00) (Second 00)) True
+
+testInbetweenDate :: DateTime
+testInbetweenDate = DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 20) (Minute 05) (Second 10)) True
+
+testEndDate :: DateTime
+testEndDate = DateTime (Date (Year 1997) (Month 07) (Day 15)) (Time (Hour 03) (Minute 00) (Second 00)) True
+
+testOutSideDate :: DateTime
+testOutSideDate = DateTime (Date (Year 1997) (Month 05) (Day 15)) (Time (Hour 04) (Minute 00) (Second 00)) True
 
 isTimeBetweenEvent :: DateTime -> Event -> Bool
 isTimeBetweenEvent checkDate event =
@@ -33,39 +92,15 @@ getEventEndDateTime Event {eventprops = (x : xs)} =
     (DTEND x) -> x
     _ -> getEventEndDateTime Event {eventprops = xs}
 
-checkOverlapping :: Calendar -> Bool
-checkOverlapping Calendar {events = _events} =
-  any
-    ( \event ->
-        let (start, end) = (getEventStartDateTime event, getEventEndDateTime event)
-         in any (\_event -> isTimeBetweenEvent start _event && _event /= event) _events
-              || any (\_event -> isTimeBetweenEvent end _event && _event /= event) _events
-    )
-    _events
-
 getEventSummary :: Event -> String
 getEventSummary Event {eventprops = (x : xs)} =
   case x of
     (SUMMARY x) -> x
     _ -> getEventSummary Event {eventprops = xs}
 
-timeSpent :: String -> Calendar -> Int
-timeSpent checkSummary Calendar {events = _events} = P.foldr (\x res -> res + eventTime x) 0 filteredEvents `div` 60
-  where
-    filteredEvents = P.filter (\event -> getEventSummary event == checkSummary) _events
-    eventTime :: Event -> Int
-    eventTime event = dateTimeToSeconds end - dateTimeToSeconds start
-      where
-        (start, end) = (getEventStartDateTime event, getEventEndDateTime event)
-
--- Exercise 10
-ppMonth :: Year -> Month -> Calendar -> String
-ppMonth year month Calendar {events = _events} =
-    P.concatMap (\week -> printWeek week year month) weeks ++ printBorder
-  where
-    weeks = createWeeks year month
-
--- Prints calander
+----------------------------------------------------------------------------------------------------
+-- Helper functions exercise 10
+----------------------------------------------------------------------------------------------------
 
 printBorder :: String
 printBorder = concat (replicate 7 ("+" ++ replicate 13 '-')) ++ "+" ++ "\n"
@@ -122,7 +157,6 @@ createWeeks year month = getWeek allDays
         getWeek :: [Int] -> [[Int]]
         getWeek xs  | length xs >= 7 = P.take 7 xs : getWeek (P.drop 7 xs)
                     | otherwise = [ xs ++ P.take (7 - length xs) [0,0 ..]]
-
 
 createDaysheading :: Year -> Month -> [Int]
 createDaysheading year month = getAllDays
