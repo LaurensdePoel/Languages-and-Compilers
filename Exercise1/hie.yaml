@@ -12,6 +12,6 @@ cradle:
     - path: "src/Features.hs"
       component: "assignment-icalendar:exe:icalendar"
       
-    # - path: "src"
-    #   component: "lib:assignment-icalendar"
+    - path: "src"
+      component: "lib:assignment-icalendar"
 

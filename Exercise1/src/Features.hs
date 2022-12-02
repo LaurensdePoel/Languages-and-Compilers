@@ -191,8 +191,6 @@ createCalendarDays2 year' month' Calendar {events = _events} = P.foldr addEvent 
             Nothing -> M.insert (runDay currentDay) [timeToString startTime ++ " - " ++ timeToString endTime] eventsPerDayList
             Just x -> M.insert (runDay currentDay) ((timeToString startTime ++ " - " ++ timeToString endTime) : x) eventsPerDayList
             where
-                -- instertDay =  M.insert (runDay currentDay) [timeToString startTime ++ " - " ++ timeToString endTime]
-                
                 timeToString :: Time -> String
                 timeToString Time {hour = _hour, minute = _minute} = showNum (runHour _hour) ++ ":" ++ showNum (runMinute _minute)
                   where
