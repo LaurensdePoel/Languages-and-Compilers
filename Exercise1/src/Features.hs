@@ -21,13 +21,6 @@ isTimeBetweenEvent checkDate event =
   where
     (start, end) = (getEventStartDateTime event, getEventEndDateTime event)
 
--- getEventDateTimes :: Event -> (DateTime, DateTime)
--- getEventDateTimes Event {eventprops = _eventprops} = P.foldr isDate (,) _eventprops
---   where
---     isDate (DTSTART x) (_, e) = (x, e)
---     isDate (DTEND x) (s, _) = (s, x)
---     isDate _ res = res
-
 getEventStartDateTime :: Event -> DateTime
 getEventStartDateTime Event {eventprops = (x : xs)} =
   case x of
@@ -67,37 +60,15 @@ timeSpent checkSummary Calendar {events = _events} = P.foldr (\x res -> res + ev
 
 -- Exercise 10
 ppMonth :: Year -> Month -> Calendar -> String
-ppMonth year month calendar = render $ createDayBox "1 1 12:00-13:00 14:00-15:00"
+ppMonth year month Calendar {events = _events} =
+    P.concatMap (\week -> printWeek week year month) weeks ++ printBorder
   where
-    -- createMonth = columns left 5 5 "test kaljfklj akdjf\ntest2" -- nrDaysOfMonth (runYear year) (runMonth month)
-    fixedWidth :: Int
-    fixedWidth = 20
-    boxBorder :: String
-    boxBorder = replicate fixedWidth '-'
-    columnBorder :: [Int] -> String
-    columnBorder boxHeights = (concatMap (\height -> "+" ++ replicate height '|') boxHeights) ++ "+"
-    createDayBox :: String -> Box
-    createDayBox dayInfo = para top fixedWidth (boxBorder ++ boxInfo ++ boxBorder)
-      where
-        elements = words dayInfo
-        boxInfo = concatMap (\element -> element ++ replicate (fixedWidth - length element) ' ') elements
+    weeks = createWeeks year month
 
-ppMyBox :: Int -> Int -> String -> String
-ppMyBox sizeX sizeY message = row sizeX ++ fillfield message
-  where
-    row sizeX = "+" ++ replicate (sizeX - 2) '-' ++ "+\n"
-    fillfield fieldVal = fieldVal ++ replicate (length fieldVal - sizeX) ' '
-
--- get a [Box] that contains all days
-
--- create week = [Box] that are glued together with hcat
-
--- create a month by putting the weeks together
+-- Prints calander
 
 printBorder :: String
 printBorder = concat (replicate 7 ("+" ++ replicate 13 '-')) ++ "+" ++ "\n"
-
--- * Exercise 3
 
 printField :: Int -> String -> String
 printField n xs = xs ++ whiteSpace
@@ -121,13 +92,13 @@ printDayNr n dayNr
       | otherwise = n - 2
     whiteSpace = replicate numberOfWhitespace ' '
 
-printWeek :: [Int] -> String
-printWeek xs = printBorder ++ printHeader xs ++ printWeekEvents xs
+printWeek :: [Int] -> Year -> Month -> String
+printWeek xs year month = printBorder ++ printHeader xs ++ printWeekEvents xs year month
 
-printWeekEvents :: [Int] -> String
-printWeekEvents xs = concatMap printRow (transpose (convertWeekToMaxSize (getEventsInWeek xs)))
+printWeekEvents :: [Int] -> Year -> Month -> String
+printWeekEvents xs year month = concatMap printRow (transpose (convertWeekToMaxSize (getEventsInWeek xs)))
   where
-    allEvents = createCalendarDays tmpYear tmpMonth testCalendar
+    allEvents = createCalendarDays year month testCalendar
 
     getEventsInWeek :: [Int] -> [[String]]
     getEventsInWeek = P.map (`getDayEvents` allEvents)
@@ -143,29 +114,15 @@ printWeekEvents xs = concatMap printRow (transpose (convertWeekToMaxSize (getEve
           | length list < maxDepth = addUntilMax $ list ++ [""]
           | otherwise = list
 
-printTable :: Calendar -> String
-printTable Calendar {events = _events} =
-  printWeek week1
-    ++ printWeek week2
-    ++ printWeek week3
-    ++ printWeek week4
-    ++ printWeek week5
-    ++ printBorder
-  where
-    allDays = createDaysheading (Year 2000) (Month 7) -- Dates tmp
-    -- creates weeks
-    week1 = P.take 7 allDays
-    week2 = P.take 7 $ P.drop 7 allDays
-    week3 = P.take 7 $ P.drop 14 allDays
-    week4 = P.take 7 $ P.drop 21 allDays
-    week5
-      | length tmpWeek5 < 7 = tmpWeek5 ++ P.take (7 - length tmpWeek5) [0, 0 ..]
-      | otherwise = P.drop 29 allDays
-    tmpWeek5 = P.drop 29 allDays
+-- create all days and events
+createWeeks :: Year -> Month -> [[Int]]
+createWeeks year month = getWeek allDays
+    where
+        allDays = createDaysheading year month
+        getWeek :: [Int] -> [[Int]]
+        getWeek xs  | length xs >= 7 = P.take 7 xs : getWeek (P.drop 7 xs)
+                    | otherwise = [ xs ++ P.take (7 - length xs) [0,0 ..]]
 
-tmpYear = Year 1997
-
-tmpMonth = Month 7
 
 createDaysheading :: Year -> Month -> [Int]
 createDaysheading year month = getAllDays
@@ -174,17 +131,19 @@ createDaysheading year month = getAllDays
     amountOfDays = nrDaysOfMonth year month
 
 createCalendarDays :: Year -> Month -> Calendar -> Map Int [String]
-createCalendarDays year' month' Calendar {events = _events} = P.foldr bla M.empty _events
+createCalendarDays year' month' Calendar {events = _events} = P.foldr addDayEvent M.empty _events
   where
-    bla event res
-      -- \| year $ date _dtstart /= year' && month $ date _dtstart /= month' = res
+    addDayEvent event res
       | year (date start) /= year' || month (date start) /= month' = res
-      | otherwise =
-          case M.lookup (runDay $ day $ date start) res of
-            Nothing -> M.insert (runDay $ day $ date start) [dateTimeToString start ++ " - " ++ dateTimeToString end] res
-            Just x -> M.insert (runDay $ day $ date start) ((dateTimeToString start ++ " - " ++ dateTimeToString end) : x) res
+      | day (date start) > day (date end) = res -- if start date is after end date
+      | day (date start) < day (date end) = res -- Add multible days
+      | otherwise = addSingleDayEvent
+          
       where
         (start, end) = (getEventStartDateTime event, getEventEndDateTime event)
+        addSingleDayEvent = case M.lookup (runDay $ day $ date start) res of
+            Nothing -> M.insert (runDay $ day $ date start) [dateTimeToString start ++ " - " ++ dateTimeToString end] res
+            Just x -> M.insert (runDay $ day $ date start) ((dateTimeToString start ++ " - " ++ dateTimeToString end) : x) res
 
     dateTimeToString :: DateTime -> String
     dateTimeToString DateTime {time = Time {hour = _hour, minute = _minute}} = showNum (runHour _hour) ++ ":" ++ showNum (runMinute _minute)
@@ -199,12 +158,3 @@ getDayEvents key map =
   case M.lookup key map of
     Nothing -> []
     Just x -> x
-
--- logica samenvoegen
-
--- printTable table@(header : rows) = [printLine width] ++ header' ++ [printLine width] ++ rows' ++ [printLine width]
---   where
---     width = columnWidths table
---     headerU = map (map toUpper) header
---     header' = map printRow [zip width headerU]
---     rows' = concatMap (\row -> map printRow [zip width row]) rows

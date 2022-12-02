@@ -201,6 +201,24 @@ testCalendar =
                   DTEND (DateTime (Date (Year 1997) (Month 07) (Day 14)) (Time (Hour 19) (Minute 00) (Second 00)) True),
                   SUMMARY "Bastille"
                 ]
+            },
+          Event
+            { eventprops =
+                [ DTSTAMP (DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True),
+                  UID "19970610T172345Z-AF23B2@example.com",
+                  DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 16)) (Time (Hour 12) (Minute 00) (Second 00)) True),
+                  DTEND (DateTime (Date (Year 1997) (Month 07) (Day 16)) (Time (Hour 16) (Minute 30) (Second 00)) True),
+                  SUMMARY "Bastille"
+                ]
+            },
+            Event
+            { eventprops =
+                [ DTSTAMP (DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True),
+                  UID "19970610T172345Z-AF23B2@example.com",
+                  DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 16)) (Time (Hour 17) (Minute 30) (Second 00)) True),
+                  DTEND (DateTime (Date (Year 1997) (Month 07) (Day 16)) (Time (Hour 19) (Minute 45) (Second 00)) True),
+                  SUMMARY "Kaas"
+                ]
             }
         ]
     }
