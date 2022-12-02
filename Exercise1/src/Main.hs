@@ -35,10 +35,15 @@ mainCalendar = do
   res <- readCalendar file
   putStrLn $ maybe "Calendar parsing error" (ppMonth (Year 2012) (Month 11)) res
 
+tes99 = readCalendar "./iCal-examples/bastille.ics"
+
 readCalendar :: FilePath -> IO (Maybe Calendar)
 readCalendar path = do
   setNewlineTranslations
   string <- readFile path
+  case recognizeCalendar string of
+    Nothing -> putStrLn "fail"
+    Just x -> putStrLn $ printCalendar x
   return $ recognizeCalendar string
 
 setNewlineTranslations :: IO ()
