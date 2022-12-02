@@ -98,7 +98,7 @@ printWeek xs year month = printBorder ++ printHeader xs ++ printWeekEvents xs ye
 printWeekEvents :: [Int] -> Year -> Month -> String
 printWeekEvents xs year month = concatMap printRow (transpose (convertWeekToMaxSize (getEventsInWeek xs)))
   where
-    allEvents = createCalendarDays year month testCalendar
+    allEvents = createCalendarDays2 year month testCalendar
 
     getEventsInWeek :: [Int] -> [[String]]
     getEventsInWeek = P.map (`getDayEvents` allEvents)
@@ -130,31 +130,45 @@ createDaysheading year month = getAllDays
     getAllDays = P.take amountOfDays [1, 2 ..]
     amountOfDays = nrDaysOfMonth year month
 
-createCalendarDays :: Year -> Month -> Calendar -> Map Int [String]
-createCalendarDays year' month' Calendar {events = _events} = P.foldr addDayEvent M.empty _events
-  where
-    addDayEvent event res
-      | year (date start) /= year' || month (date start) /= month' = res
-      | day (date start) > day (date end) = res -- if start date is after end date
-      | day (date start) < day (date end) = res -- Add multible days
-      | otherwise = addSingleDayEvent
-          
-      where
-        (start, end) = (getEventStartDateTime event, getEventEndDateTime event)
-        addSingleDayEvent = case M.lookup (runDay $ day $ date start) res of
-            Nothing -> M.insert (runDay $ day $ date start) [dateTimeToString start ++ " - " ++ dateTimeToString end] res
-            Just x -> M.insert (runDay $ day $ date start) ((dateTimeToString start ++ " - " ++ dateTimeToString end) : x) res
 
-    dateTimeToString :: DateTime -> String
-    dateTimeToString DateTime {time = Time {hour = _hour, minute = _minute}} = showNum (runHour _hour) ++ ":" ++ showNum (runMinute _minute)
+createCalendarDays2 :: Year -> Month -> Calendar -> Map Int [String]
+createCalendarDays2 year' month' Calendar {events = _events} = P.foldr addEvent M.empty _events
+  where
+    addEvent :: Event -> Map Int [String] -> Map Int [String]
+    addEvent event eventsPerDayList
+      | year startDate /= year' || month startDate /= month' = eventsPerDayList -- check if event isn't itself, if so don't add it
+      | startDate > endDate = eventsPerDayList -- if start date is after end date, don't add it
+      | month startDate /= month endDate =  addUntilEndDay startDate (toLastDayOfTheMonth startDate) (fst eventTimes,midnight) eventsPerDayList -- if event goes into next month only put the event in map untill the end of the month
+      | startDay /= endDay = addUntilEndDay startDate endDate eventTimes eventsPerDayList
+
+      | otherwise = addDayEvent startDay eventTimes eventsPerDayList
       where
-        showNum :: Int -> String
-        showNum x
-          | x < 9 = "0" ++ show x
-          | otherwise = show x
+        (startDate, endDate) = (date $ getEventStartDateTime event, date $ getEventEndDateTime event)
+        (startDay, endDay) = (day startDate, day endDate)
+        eventTimes = (time $ getEventStartDateTime event, time $ getEventEndDateTime event)
+    
+    addUntilEndDay :: Date -> Date -> (Time,Time) -> Map Int [String] -> Map Int [String]
+    addUntilEndDay currentDate endDate times eventsPerDayList 
+        | currentDate < endDate = addUntilEndDay (addDay currentDate) endDate (morning, snd times) $ addDayEvent (day currentDate) (fst times, midnight) eventsPerDayList
+        | otherwise = addDayEvent (day currentDate) times eventsPerDayList
+
+    addDayEvent :: Day -> (Time,Time) -> Map Int [String] -> Map Int [String]
+    addDayEvent currentDay (startTime, endTime) eventsPerDayList = case M.lookup (runDay currentDay) eventsPerDayList of
+            Nothing -> M.insert (runDay currentDay) [timeToString startTime ++ " - " ++ timeToString endTime] eventsPerDayList
+            Just x -> M.insert (runDay currentDay) ((timeToString startTime ++ " - " ++ timeToString endTime) : x) eventsPerDayList
+            where
+                -- instertDay =  M.insert (runDay currentDay) [timeToString startTime ++ " - " ++ timeToString endTime]
+                
+                timeToString :: Time -> String
+                timeToString Time {hour = _hour, minute = _minute} = showNum (runHour _hour) ++ ":" ++ showNum (runMinute _minute)
+                  where
+                    showNum :: Int -> String
+                    showNum x
+                      | x < 9 = "0" ++ show x
+                      | otherwise = show x
 
 getDayEvents :: Int -> Map Int [String] -> [String]
 getDayEvents key map =
   case M.lookup key map of
     Nothing -> []
-    Just x -> x
+    Just x -> P.sort x

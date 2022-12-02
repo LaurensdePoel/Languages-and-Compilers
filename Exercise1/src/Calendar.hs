@@ -92,6 +92,24 @@ dateTimeToSeconds DateTime {date = Date {year = _year, month = _month, day = _da
 nrDaysOfMonth :: Year -> Month -> Int
 nrDaysOfMonth year month = gregorianMonthLength (fromIntegral (runYear year)) (runMonth month)
 
+addDay :: Date -> Date
+addDay date@Date {year=_year, month=_month, day=_day} 
+  | endOfMonth && endOfYear = date {year = Year (runYear _year +1), month = Month 0, day = Day 0}
+  | endOfMonth = date {month = Month (runMonth _month+ 1), day = Day 0}
+  | otherwise = date {day = Day (runDay _day+ 1)}
+    where
+      endOfMonth = nrDaysOfMonth _year _month == runDay _day
+      endOfYear = runMonth _month == 12
+
+toLastDayOfTheMonth :: Date -> Date
+toLastDayOfTheMonth date@Date {year=_year, month=_month, day=_day}  = date {day = Day $ nrDaysOfMonth _year _month }
+
+midnight :: Time
+midnight = Time {hour=Hour 23, minute=Minute 59, second=Second 59}
+morning :: Time
+morning = Time {hour=Hour 00, minute=Minute 00, second=Second 00}
+
+
 nrDaysOfYear :: Int -> Int
 nrDaysOfYear year
   | isLeapYear (fromIntegral year - 1970) = 366
@@ -216,8 +234,26 @@ testCalendar =
                 [ DTSTAMP (DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True),
                   UID "19970610T172345Z-AF23B2@example.com",
                   DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 16)) (Time (Hour 17) (Minute 30) (Second 00)) True),
-                  DTEND (DateTime (Date (Year 1997) (Month 07) (Day 16)) (Time (Hour 19) (Minute 45) (Second 00)) True),
+                  DTEND (DateTime (Date (Year 1997) (Month 08) (Day 17)) (Time (Hour 19) (Minute 45) (Second 00)) True),
                   SUMMARY "Kaas"
+                ]
+            },
+            Event
+            { eventprops =
+                [ DTSTAMP (DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True),
+                  UID "19970610T172345Z-AF23B2@example.com",
+                  DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 18)) (Time (Hour 12) (Minute 00) (Second 00)) True),
+                  DTEND (DateTime (Date (Year 1997) (Month 07) (Day 18)) (Time (Hour 16) (Minute 30) (Second 00)) True),
+                  SUMMARY "Bastille"
+                ]
+            },
+            Event
+            { eventprops =
+                [ DTSTAMP (DateTime (Date (Year 1997) (Month 06) (Day 10)) (Time (Hour 17) (Minute 23) (Second 45)) True),
+                  UID "19970610T172345Z-AF23B2@example.com",
+                  DTSTART (DateTime (Date (Year 1997) (Month 07) (Day 18)) (Time (Hour 10) (Minute 00) (Second 00)) True),
+                  DTEND (DateTime (Date (Year 1997) (Month 07) (Day 18)) (Time (Hour 16) (Minute 30) (Second 00)) True),
+                  SUMMARY "Bastille"
                 ]
             }
         ]
