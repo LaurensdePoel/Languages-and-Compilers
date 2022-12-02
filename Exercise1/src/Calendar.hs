@@ -196,11 +196,14 @@ createCalProp (TKey TVersion) (TText text) = VERSION text
 createCalProp _ _ = error "invalid tokens"
 
 getEvent :: Parser Token Event
-getEvent = Event <$ keyWord <*> greedy parseEventProp <* keyWord -- <* satisfy isNotEventEndToken <* keyWord
+-- getEvent = Event <$ keyWord <*> greedy parseEventProp <* keyWord -- <* satisfy isNotEventEndToken <* keyWord
+getEvent = event -- if isValidEvent event then event else event
+  where
+    event = (\p -> if isValidEvent (Event p) then Event p else error "invalid event") <$ keyWord <*> greedy parseEventProp <* keyWord
 
-isNotEventEndToken :: Token -> Bool
-isNotEventEndToken (TKey TENDVEVENT) = False
-isNotEventEndToken _ = True
+-- isNotEventEndToken :: Token -> Bool
+-- isNotEventEndToken (TKey TENDVEVENT) = False
+-- isNotEventEndToken _ = True
 
 -- getEvent = (\p -> Event <$> many parseEventProp ) <$> (satisfy isEventEndToken)
 -- [TKey TDTStamp..,]
@@ -230,20 +233,116 @@ isNotEventEndToken _ = True
 -- parseCalendarData = parseCalProp <|> getEvent
 
 parseCalProps :: Parser Token [CalProp]
-parseCalProps = greedy parseCalProp -- <* satisfy isNotBeginEvent
+parseCalProps = (\p -> if isValidCalProps p then p else error "invalid cal properties") <$> greedy parseCalProp -- <* satisfy isNotBeginEvent
 
-isNotBeginEvent :: Token -> Bool
-isNotBeginEvent (TKey TBEGINVEVENT) = False
-isNotBeginEvent _ = True
+-- isNotBeginEvent :: Token -> Bool
+-- isNotBeginEvent (TKey TBEGINVEVENT) = False
+-- isNotBeginEvent _ = True
 
 parseEvents :: Parser Token [Event]
 parseEvents = greedy getEvent
+
+-- parseEvents :: Parser Token [Event]
+-- parseEvents = greedy (ev)
+--   where
+--     ev = case getEvent of
+--           Nothing -> getEvent <* eof
+--           Just x -> x
 
 parseCalendar :: Parser Token Calendar
 parseCalendar = Calendar <$ keyWord <*> parseCalProps <*> parseEvents <* keyWord -- Calendar <$ beginCalendar <*>   -- <$ keyWord <*> text <* keyWord <*> text <*> many event
 
 recognizeCalendar :: String -> Maybe Calendar
 recognizeCalendar s = run scanCalendar s >>= run parseCalendar
+
+-- tes7 = (UID "test") `elem` [UID "test", SUMMARY "testtest"]
+
+-- tes8 = (length $ filter (\p -> p == (UID "test")) [UID "test", SUMMARY "testtest"]) == 1
+
+-- occurrences :: EventProp -> [EventProp] -> Int
+-- occurrences ep [] = 0
+-- occurrences ep (x : xs) =
+--   case x of
+--     (UID _) -> 1 + occurrences ep xs
+--     _ -> occurrences ep xs
+
+tes9 = isValidEvent Event {eventprops = [UID "test", SUMMARY "testtest", DTSTAMP testStartDate, DTSTART testStartDate, DTEND testStartDate]}
+
+data EventPropsOccurrences = EventPropsOccurrences
+  { rDtStamp :: Int,
+    rDtStart :: Int,
+    rDtEnd :: Int,
+    rUID :: Int,
+    rSummary :: Int,
+    nrdescription :: Int,
+    nrlocation :: Int
+  }
+
+data CalPropsOccurrences = CalPropsOccurrences
+  { rProdID :: Int,
+    rVersion :: Int
+  }
+
+-- Update amount off times the required props occur
+eventPropOccurrences :: EventPropsOccurrences -> [EventProp] -> EventPropsOccurrences
+eventPropOccurrences occurrences [] = occurrences
+eventPropOccurrences occurrences (x : xs) =
+  case x of
+    (DTSTAMP _) -> eventPropOccurrences (occurrences {rDtStamp = 1 + rDtStamp occurrences}) xs
+    (DTSTART _) -> eventPropOccurrences (occurrences {rDtStart = 1 + rDtStart occurrences}) xs
+    (DTEND _) -> eventPropOccurrences (occurrences {rDtEnd = 1 + rDtEnd occurrences}) xs
+    (UID _) -> eventPropOccurrences (occurrences {rUID = 1 + rUID occurrences}) xs
+    (SUMMARY _) -> eventPropOccurrences (occurrences {rSummary = 1 + rSummary occurrences}) xs
+    (DESCRIPTION _) -> eventPropOccurrences (occurrences {nrdescription = 1 + nrdescription occurrences}) xs
+    (LOCATION _) -> eventPropOccurrences (occurrences {nrlocation = 1 + nrlocation occurrences}) xs
+
+-- Update amount off times the calprops occur
+calPropOccurrences :: CalPropsOccurrences -> [CalProp] -> CalPropsOccurrences
+calPropOccurrences occurrences [] = occurrences
+calPropOccurrences occurrences (x : xs) =
+  case x of
+    (VERSION _) -> calPropOccurrences (occurrences {rVersion = 1 + rVersion occurrences}) xs
+    (PRODID _) -> calPropOccurrences (occurrences {rProdID = 1 + rProdID occurrences}) xs
+
+-- Check if all required event props occur only once
+isValidEvent :: Event -> Bool
+isValidEvent Event {eventprops = _eventprops} =
+  1 == rDtStamp occurrences
+    && 1 == rDtStart occurrences
+    && 1 == rDtEnd occurrences
+    && 1 == rUID occurrences
+    && 1 == rSummary occurrences
+    && (1 == nrdescription occurrences || 0 == nrdescription occurrences)
+    && (1 == nrlocation occurrences || 0 == nrlocation occurrences)
+  where
+    occurrences :: EventPropsOccurrences
+    occurrences =
+      eventPropOccurrences
+        EventPropsOccurrences
+          { rDtStamp = 0,
+            rDtStart = 0,
+            rDtEnd = 0,
+            rUID = 0,
+            rSummary = 0,
+            nrdescription = 0,
+            nrlocation = 0
+          }
+        _eventprops
+
+-- Check if all required event props occur only once
+isValidCalProps :: [CalProp] -> Bool
+isValidCalProps prop =
+  1 == rVersion occurrences
+    && 1 == rProdID occurrences
+  where
+    occurrences :: CalPropsOccurrences
+    occurrences =
+      calPropOccurrences
+        CalPropsOccurrences
+          { rVersion = 0,
+            rProdID = 0
+          }
+        prop
 
 -- Exercise 8
 testStartDate :: DateTime
