@@ -10,22 +10,30 @@ $digit = 0-9            -- digits
 $alpha = [a-zA-Z]       -- alphabetic characters
 
 tokens :-
+
   $white+     ;
   "--".*      ;
-  "->"        {\_ -> TArrow}
-  "\."        {\_ -> TPoint}
-  "\,"        {\_ -> TComma}
-  "go"        {\_ -> TGo}
-  "take"      {\_ -> TTake}
-  "mark"      {\_ -> TMark}
-  "nothing"   {\_ -> TNothing}
-  "turn"      {\_ -> TTurn}
-  "case"      {\_ -> TCase}
-  "of"        {\_ -> TOf}
-  "end"       {\_ -> TEnd}
-  "left"      {\_ -> TLeft}
-  "right"     {\_ -> TRight}
-  "front"     {\_ -> TFront}
-  "\;"        {\_ -> TSemicolon}
-  [$alpha $digit \- \+]*  {\s -> TIdent s}
+  "->"        {const TArrow}
+  "."        {const TPoint}
+  ","        {const TComma}
+  "go"        {const TGo}
+  "take"      {const TTake}
+  "mark"      {const TMark}
+  "nothing"   {const TNone}
+  "turn"      {const TTurn}
+  "case"      {const TCase}
+  "of"        {const TOf}
+  "end"       {const TEnd}
+  "left"      {const TLeft}
+  "right"     {const TRight}
+  "front"     {const TFront}
+  ";"        {const TSemicolon}
+  "_"         {const TUnderscore}
+  "Empty"     {const TEmpty} --???
+  "Lambda"       {const TLambda} --???
+  "Debris"      {const TDebris} --???
+  "Asteroid"    {const TAsteroid} --???
+  "Boundary"    {const TBoundary} --???
+  $alpha+     {\s -> TIdent s}
+  -- .*          ;
 
