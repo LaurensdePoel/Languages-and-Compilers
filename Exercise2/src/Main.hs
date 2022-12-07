@@ -28,6 +28,7 @@ main = do
   putStrLn ""
   print tokens
   let arr = parser tokens
+  putStrLn ""
   putStrLn "Parsed program:"
   putStrLn ""
   print arr

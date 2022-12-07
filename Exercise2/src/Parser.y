@@ -9,8 +9,8 @@ import Model
 
 %token
   "->"      {TArrow}
-  "\."      {TPoint}
-  "\,"      {TComma}
+  "."      {TPoint}
+  ","      {TComma}
   "go"      {TGo}
   "take"    {TTake}
   "mark"    {TMark}
@@ -22,14 +22,14 @@ import Model
   "left"    {TLeft}  
   "right"   {TRight}  
   "front"   {TFront}  
-  "\;"      {TSemicolon}  
+  ";"      {TSemicolon}  
   "_"       {TUnderscore}  
-  string    {TIdent $$}
   "Lambda"  {TLambda}
   "Debris"  {TDebris}
   "Asteroid" {TAsteroid}
   "Boundary" {TBoundary}
   "Empty"    {TEmpty} -- What to do with this?
+  ident    {TIdent $$}
   -- x { Token }
 
 %%
@@ -50,9 +50,9 @@ Program : Program rule          {$2 : $1}
         | rule                 { [$1] }
         | {- empty -}               { [] }
         
-rule : string "->" cmds "\."            {Rule $1 $3}
+rule : ident "->" cmds "."            {Rule $1 $3}
 
-cmds : cmd "\," cmds                 {Cmds $1 $3}
+cmds : cmd "," cmds                 {Cmds $1 $3}
      | cmd                          {Cmds $1 EmptyC}
      | {- empty -}                  {EmptyC}
 
@@ -62,12 +62,13 @@ cmd : "go"                          {Go}
     | "nothing"                     {None}
     | "turn" dir                    {Turn $2}
     | "case" dir "of" alts "end"    {Case $2 $4}
+    | ident                         {Ident $1}
 
 dir : "left"                        {DLeft}
     | "right"                       {DRight}
     | "front"                       {DFront}
 
-alts : alt "\;" alts                  {Alts $1 $3}
+alts : alt ";" alts                  {Alts $1 $3}
      | alt                          {Alts $1 EmptyA}
      | {- empty -}                  {EmptyA}
 
