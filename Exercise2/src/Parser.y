@@ -46,11 +46,17 @@ import Model
 -- acc = Program Rule Cmds Cmd Dir Alts Alt Pat
 
 -- meant = Program Rule Cmds Cmd Dir Alts Alt Pat
-Program : Program rule          {$2 : $1}
-        | rule                 { [$1] }
+
+-- recursive 
+-- Program : Program rule          {$2 : $1}
+--         | rule                 { [$1] }
+--         | {- empty -}               { [] }
+
+Program : rule Program              {$1 : $2}
+        | rule                      { [$1] }
         | {- empty -}               { [] }
         
-rule : ident "->" cmds "."            {Rule $1 $3}
+rule : ident "->" cmds "."           {Rule $1 $3}
 
 cmds : cmd "," cmds                 {Cmds $1 $3}
      | cmd                          {Cmds $1 EmptyC}

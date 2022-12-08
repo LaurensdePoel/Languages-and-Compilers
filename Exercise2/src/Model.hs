@@ -23,7 +23,6 @@ data Cmds = EmptyC | Cmds Cmd Cmds
     deriving Show   
 data Cmd = Go | Take | Mark | None | Turn Dir | Case Dir Alts | Ident String
     deriving Show
-
 data Dir = DLeft | DRight | DFront
     deriving Show
 data Alts = EmptyA | Alts Alt Alts

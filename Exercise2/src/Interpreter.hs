@@ -16,12 +16,21 @@ import Algebra
 
 
 data Contents  =  Empty | Lambda | Debris | Asteroid | Boundary
+  deriving Eq
 
 type Size      =  Int
 type Pos       =  (Int, Int)
 type Space     =  Map Pos Contents
 
 
+testSpace :: Space
+testSpace = L.fromList [
+            ((0,2), Debris), ((1,2), Debris), ((2,2), Debris),
+            ((0,0), Lambda), ((1,0), Lambda), ((2,0), Lambda),
+            ((0,1), Empty) , ((1,1), Empty) , ((2,1), Empty)
+            ]
+
+test = putStrLn (printSpace testSpace)
 
 -- | Parses a space file, such as the ones in the examples folder.
 parseSpace :: Parser Char Space
@@ -54,11 +63,32 @@ contentsTable =  [ (Empty   , '.' )
 
 -- Exercise 7
 printSpace :: Space -> String
-printSpace = undefined
+printSpace m = printSize ++ printRows 0
+    where
+      convertContentToChar :: Contents -> Char  
+      convertContentToChar x = case lookup x contentsTable of
+          Nothing -> error "Content not in contents list"
+          Just x -> x
+
+      printSize :: String
+      printSize = "(" ++ show maxX ++ "," ++ show maxY ++ ")\n"
+
+
+      printRow :: Pos -> String
+      printRow pos@(x,y) | x <= maxX = case L.lookup pos m of
+                                  Nothing -> error "Key not in map"
+                                  Just c ->  convertContentToChar c : printRow (x+1,y)
+                  | otherwise = "\n"
+
+      printRows :: Int -> String
+      printRows y | y <= maxY = printRow (0,y) ++ printRows (y+1)
+                  | otherwise = ""
+
+      (maxX, maxY) = fst (L.findMax m)
 
 
 -- These three should be defined by you
-type Ident = ()
+type Ident = String
 type Commands = ()
 type Heading = ()
 
@@ -72,6 +102,10 @@ data Step =  Done  Space Pos Heading
           |  Fail  String
 
 -- | Exercise 8
+-- String -> Token (Lexen)
+-- Token -> Program (Parsen)
+-- Check (Program)  (Check)
+-- program -> environment
 toEnvironment :: String -> Environment
 toEnvironment = undefined
 
