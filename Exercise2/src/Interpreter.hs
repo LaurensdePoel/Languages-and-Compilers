@@ -89,7 +89,7 @@ printSpace m = printSize ++ printRows 0
 
 -- These three should be defined by you
 type Ident = String
-type Commands = ()
+type Commands = Cmds
 type Heading = ()
 
 type Environment = Map Ident Commands
@@ -102,12 +102,18 @@ data Step =  Done  Space Pos Heading
           |  Fail  String
 
 -- | Exercise 8
--- String -> Token (Lexen)
--- Token -> Program (Parsen)
--- Check (Program)  (Check)
--- program -> environment
 toEnvironment :: String -> Environment
-toEnvironment = undefined
+toEnvironment xs | checkProgram program = createEnviroment program
+                 | otherwise =  error "program not correct"
+  where
+    program :: Program
+    program = Program (parser (alexScanTokens xs))
+
+    createEnviroment :: Program -> Environment
+    createEnviroment (Program rules) = L.fromList (map makePair rules)
+
+    makePair :: Rule -> (Ident, Commands)
+    makePair (Rule s c) = (s,c)
 
 -- | Exercise 9
 step :: Environment -> ArrowState -> Step
