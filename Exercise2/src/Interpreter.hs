@@ -25,9 +25,9 @@ type Space     =  Map Pos Contents
 
 testSpace :: Space
 testSpace = L.fromList [
-            ((0,2), Debris), ((1,2), Debris), ((2,2), Debris),
-            ((0,0), Empty), ((1,0), Empty), ((2,0), Lambda),
-            ((0,1), Empty) , ((1,1), Empty) , ((2,1), Empty)
+            ((0,0), Empty), ((1,0), Debris), ((2,0), Lambda),
+            ((0,1), Empty) , ((1,1), Empty) , ((2,1), Empty),
+            ((0,2), Debris), ((1,2), Debris), ((2,2), Debris)
             ]
 
 test = putStrLn (printSpace testSpace)
@@ -120,7 +120,7 @@ toEnvironment xs | checkProgram program = createEnviroment program
 
 testEnvironment, testEnvironment2 :: Environment
 testEnvironment = toEnvironment "start     -> turn right, go, turn left."
-testEnvironment2 = toEnvironment "start     -> go, mark."
+testEnvironment2 = toEnvironment "start    -> go, case front of Boundary -> nothing; _ -> go end."
 
 testArrowState :: ArrowState
 testArrowState = ArrowState testSpace (0,0) East testStack
@@ -131,6 +131,7 @@ testStack = case L.lookup "start" testEnvironment2 of
       Just x -> x
 
 -- | Exercise 9
+-- putStrLn $ printStep $ step testEnvironment2 testArrowState 
 step :: Environment -> ArrowState -> Step
 --step env (ArrowState space pos heading stack) = undefined
 step env (ArrowState space pos heading EmptyC) = Done space pos heading
@@ -139,27 +140,26 @@ step env (ArrowState space pos heading (Cmds cmd cmds)) = handleStack cmd
     doNothing :: Step
     doNothing = Ok (ArrowState space pos heading cmds)
 
-    handleStack :: Cmd -> Step
-    -- go
-    handleStack Go = Ok (ArrowState space pos heading cmds)
-      where
-        moveForward (x,y) = case heading of
+    nextPos :: Pos -> Pos
+    nextPos (x,y) = case heading of
           North -> (x, y-1)
           East  -> (x+1, y)
           South -> (x, y+1)
           West  -> (x-1, y)
 
-        moveIfPossible :: Step
-        moveIfPossible = case L.lookup (moveForward pos) space of
-            -- Nothing -> doNothing -- the posistion doesn't exist -> do nothing
-            Nothing -> error "position doesn't exist" -- the posistion doesn't exist -> do nothing
+    handleStack :: Cmd -> Step
+    -- go
+    handleStack Go = Ok (ArrowState space moveIfPossible heading cmds)
+      where
+        moveIfPossible :: Pos
+        moveIfPossible = case L.lookup (nextPos pos) space of
+            Nothing -> pos -- the posistion doesn't exist -> do nothing
             Just x -> if validNextPos x 
               then 
-                Ok (ArrowState space (moveForward pos) heading cmds) -- can move to next position
+                nextPos pos -- can move to next position
               else 
-                -- doNothing -- next object not a lambda or a debris
-                error " next object not a lambda or a debris" -- next object not a lambda or a debris
-          
+                pos -- next object not a lambda or a debris
+    
         validNextPos :: Contents -> Bool
         validNextPos content = case content of
             Lambda -> True
@@ -199,15 +199,18 @@ step env (ArrowState space pos heading (Cmds cmd cmds)) = handleStack cmd
           East -> South
           South -> West
           West -> North
-          
 
     -- case
+    handleStack (Case dir stack) = case L.lookup (nextPos pos) space of
+        Nothing       -> undefined -- check for Boundary
+        Just content  -> undefined -- check with current content
+        -- where
+        --   contentOf :: Contents
+    
     -- rule
-
-    -- error
-    handleStack _ = Fail (show cmd)
-
-
+    handleStack (Ident ident) = case L.lookup ident env of
+      Nothing -> Fail $ "Rule: " ++ ident ++ " is not defined"
+      Just stack  -> Ok (ArrowState space pos heading cmds)
 
 printStep :: Step -> String
 printStep (Fail mes) = "Fail: " ++ mes

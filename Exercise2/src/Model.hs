@@ -30,4 +30,4 @@ data Alts = EmptyA | Alts Alt Alts
 data Alt = Alt Pat Cmds
     deriving Show
 data Pat = PEmpty | PLambda | PDebris | PAsteroid | PBoundary | PUnderscore 
-    deriving Show
+    deriving (Show, Eq)
