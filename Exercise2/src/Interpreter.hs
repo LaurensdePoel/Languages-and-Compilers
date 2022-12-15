@@ -6,7 +6,7 @@ import Prelude hiding ((<*), (<$))
 import Data.Map (Map)
 import qualified Data.Map as L
 
-import Data.Char (isSpace, GeneralCategory (Space))
+import Data.Char (isSpace, GeneralCategory (Space, ParagraphSeparator))
 import Control.Monad (replicateM)
 
 import Lexer
@@ -25,8 +25,8 @@ type Space     =  Map Pos Contents
 
 testSpace :: Space
 testSpace = L.fromList [
-            ((0,0), Empty), ((1,0), Debris), ((2,0), Lambda),
-            ((0,1), Empty) , ((1,1), Empty) , ((2,1), Empty),
+            ((0,0), Empty), ((1,0), Empty), ((2,0), Lambda),
+            ((0,1), Lambda) , ((1,1), Empty) , ((2,1), Empty),
             ((0,2), Debris), ((1,2), Debris), ((2,2), Debris)
             ]
 
@@ -120,7 +120,7 @@ toEnvironment xs | checkProgram program = createEnviroment program
 
 testEnvironment, testEnvironment2 :: Environment
 testEnvironment = toEnvironment "start     -> turn right, go, turn left."
-testEnvironment2 = toEnvironment "start    -> go, case front of Boundary -> nothing; _ -> go end."
+testEnvironment2 = toEnvironment "start    -> case left of Boundary -> turn right; Lambda -> go, go, go; _ -> go end."
 
 testArrowState :: ArrowState
 testArrowState = ArrowState testSpace (0,0) East testStack
@@ -140,23 +140,35 @@ step env (ArrowState space pos heading (Cmds cmd cmds)) = handleStack cmd
     doNothing :: Step
     doNothing = Ok (ArrowState space pos heading cmds)
 
-    nextPos :: Pos -> Pos
-    nextPos (x,y) = case heading of
-          North -> (x, y-1)
-          East  -> (x+1, y)
-          South -> (x, y+1)
-          West  -> (x-1, y)
+    nextPos :: Pos -> Heading -> Pos
+    nextPos (x,y) heading' = case heading' of
+        North -> (x, y-1)
+        East  -> (x+1, y)
+        South -> (x, y+1)
+        West  -> (x-1, y)
+    
+    turnLeft, turnRight :: Heading -> Heading
+    turnLeft heading = case heading of
+        North -> West
+        West -> South
+        South -> East
+        East -> North
+    turnRight heading = case heading of
+        North -> East
+        East -> South
+        South -> West
+        West -> North
 
     handleStack :: Cmd -> Step
     -- go
     handleStack Go = Ok (ArrowState space moveIfPossible heading cmds)
       where
         moveIfPossible :: Pos
-        moveIfPossible = case L.lookup (nextPos pos) space of
+        moveIfPossible = case L.lookup (nextPos pos heading) space of
             Nothing -> pos -- the posistion doesn't exist -> do nothing
             Just x -> if validNextPos x 
               then 
-                nextPos pos -- can move to next position
+                nextPos pos heading -- can move to next position
               else 
                 pos -- next object not a lambda or a debris
     
@@ -187,26 +199,33 @@ step env (ArrowState space pos heading (Cmds cmd cmds)) = handleStack cmd
       DFront  -> doNothing -- turning foreward has no effect
       DRight  -> Ok (ArrowState space pos (turnRight heading) cmds) 
 
-      where
-        turnLeft, turnRight :: Heading -> Heading
-        turnLeft heading = case heading of
-          North -> West
-          West -> South
-          South -> East
-          East -> North
-        turnRight heading = case heading of
-          North -> East
-          East -> South
-          South -> West
-          West -> North
-
     -- case
-    handleStack (Case dir stack) = case L.lookup (nextPos pos) space of
-        Nothing       -> undefined -- check for Boundary
-        Just content  -> undefined -- check with current content
-        -- where
-        --   contentOf :: Contents
-    
+    handleStack (Case dir alts) = case dir of
+      DLeft   -> getNewStack (nextPos pos (turnLeft heading))
+      DFront  -> getNewStack (nextPos pos heading)
+      DRight  -> getNewStack (nextPos pos (turnRight heading))
+
+      where
+        getNewStack pos'= case L.lookup pos' space of
+          Nothing       -> handleAlts alts Boundary -- location doesn't exist so it is a boundery and check with Boundary
+          Just content  -> handleAlts alts content  -- check with current content
+          -- where
+          --   contentOf :: Contents
+
+        handleAlts :: Alts -> Contents -> Step
+        handleAlts EmptyA content = Fail "There are not options defined in the Case statement"
+        handleAlts (Alts (Alt pat newCmds) alts) content 
+          | patAndContentIsEqual =  Ok (ArrowState space pos heading newCmds)            -- corosponding al
+          | otherwise = handleAlts alts content -- check next alt in the Alts list
+          where
+            patAndContentIsEqual = 
+              pat == PEmpty && content == Empty || 
+              pat == PLambda && content == Lambda || 
+              pat == PDebris && content == Debris || 
+              pat == PAsteroid && content == Asteroid ||
+              pat == PBoundary && content == Boundary || 
+              pat == PUnderscore
+
     -- rule
     handleStack (Ident ident) = case L.lookup ident env of
       Nothing -> Fail $ "Rule: " ++ ident ++ " is not defined"
