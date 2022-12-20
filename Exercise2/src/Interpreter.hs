@@ -145,10 +145,10 @@ toEnvironment xs | checkProgram program = createEnviroment program
     makePair (Rule s c) = (s,c)
 
 testE :: Map Ident Commands
-testE = L.fromList []
+testE = L.fromList [("start" , EmptyC)]
 
 testEnvironment, testEnvironment2 :: Environment
-testEnvironment = toEnvironment "start     -> go, turn left."
+testEnvironment = toEnvironment "start     -> go."
 testEnvironment2 = toEnvironment "start    -> case left of Boundary -> turn right; Lambda -> go, go, go; _ -> go end."
 
 testArrowState :: ArrowState
