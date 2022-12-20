@@ -13,6 +13,7 @@ import Lexer
 import Parser
 import Model
 import Algebra
+import Type.Reflection (SomeTypeRep(SomeTypeRep))
 
 
 data Contents  =  Empty | Lambda | Debris | Asteroid | Boundary
@@ -25,10 +26,12 @@ type Space     =  Map Pos Contents
 
 testSpace :: Space
 testSpace = L.fromList [
-            ((0,0), Empty), ((1,0), Empty), ((2,0), Lambda),
-            ((0,1), Lambda) , ((1,1), Empty) , ((2,1), Empty),
-            ((0,2), Debris), ((1,2), Debris), ((2,2), Debris)
+            ((0,0), Empty), ((1,0), Empty), ((2,0), Empty),
+            ((0,1), Empty) , ((1,1), Empty) , ((2,1), Empty),
+            ((0,2), Empty), ((1,2), Empty), ((2,2), Empty)
             ]
+
+
 
 test = putStrLn (printSpace testSpace)
 
@@ -60,8 +63,7 @@ contentsTable =  [ (Empty   , '.' )
                  , (Asteroid, 'O' )
                  , (Boundary, '#' )]
 
-
--- Exercise 7
+--Exercise 7
 printSpace :: Space -> String
 printSpace m = printSize ++ printRows 0
     where
@@ -71,20 +73,45 @@ printSpace m = printSize ++ printRows 0
           Just x -> x
 
       printSize :: String
-      printSize = "(" ++ show maxX ++ "," ++ show maxY ++ ")\n"
+      printSize = "(" ++ show maxY ++ "," ++ show maxX ++ ")\n"
 
 
       printRow :: Pos -> String
-      printRow pos@(x,y) | x <= maxX = case L.lookup pos m of
+      printRow pos@(y,x) | x <= maxX = case L.lookup pos m of
                                   Nothing -> error "Key not in map"
-                                  Just c ->  convertContentToChar c : printRow (x+1,y)
+                                  Just c ->  convertContentToChar c : printRow (y,x+1)
                   | otherwise = "\n"
 
       printRows :: Int -> String
-      printRows y | y <= maxY = printRow (0,y) ++ printRows (y+1)
+      printRows y | y <= maxY = printRow (y,0) ++ printRows (y+1)
                   | otherwise = ""
 
-      (maxX, maxY) = fst (L.findMax m)
+      (maxY, maxX) = fst (L.findMax m)
+
+-- -- Exercise 7
+-- printSpace :: Space -> String
+-- printSpace m = printSize ++ printRows 0
+--     where
+--       convertContentToChar :: Contents -> Char  
+--       convertContentToChar x = case lookup x contentsTable of
+--           Nothing -> error "Content not in contents list"
+--           Just x -> x
+
+--       printSize :: String
+--       printSize = "(" ++ show maxX ++ "," ++ show maxY ++ ")\n"
+
+
+--       printRow :: Pos -> String
+--       printRow pos@(x,y) | x <= maxX = case L.lookup pos m of
+--                                   Nothing -> error "Key not in map"
+--                                   Just c ->  convertContentToChar c : printRow (x+1,y)
+--                   | otherwise = "\n"
+
+--       printRows :: Int -> String
+--       printRows y | y <= maxY = printRow (0,y) ++ printRows (y+1)
+--                   | otherwise = ""
+
+--       (maxX, maxY) = fst (L.findMax m)
 
 
 -- These three should be defined by you
@@ -117,16 +144,18 @@ toEnvironment xs | checkProgram program = createEnviroment program
     makePair :: Rule -> (Ident, Commands)
     makePair (Rule s c) = (s,c)
 
+testE :: Map Ident Commands
+testE = L.fromList []
 
 testEnvironment, testEnvironment2 :: Environment
-testEnvironment = toEnvironment "start     -> turn right, go, turn left."
+testEnvironment = toEnvironment "start     -> go, turn left."
 testEnvironment2 = toEnvironment "start    -> case left of Boundary -> turn right; Lambda -> go, go, go; _ -> go end."
 
 testArrowState :: ArrowState
-testArrowState = ArrowState testSpace (0,0) East testStack
+testArrowState = ArrowState testSpace (0,1) North (loadStack testEnvironment)
 
-testStack :: Stack
-testStack = case L.lookup "start" testEnvironment2 of
+loadStack :: Environment -> Stack 
+loadStack env = case L.lookup "start" env of
       Nothing -> error "Key not found in testStack"
       Just x -> x
 
@@ -141,11 +170,11 @@ step env (ArrowState space pos heading (Cmds cmd cmds)) = handleStack cmd
     doNothing = Ok (ArrowState space pos heading cmds)
 
     nextPos :: Pos -> Heading -> Pos
-    nextPos (x,y) heading' = case heading' of
-        North -> (x, y-1)
-        East  -> (x+1, y)
-        South -> (x, y+1)
-        West  -> (x-1, y)
+    nextPos (y,x) heading' = case heading' of
+        North -> (y-1, x)
+        East  -> (y, x+1)
+        South -> (y+1, x)
+        West  -> (y, x-1)
     
     turnLeft, turnRight :: Heading -> Heading
     turnLeft heading = case heading of
@@ -170,12 +199,14 @@ step env (ArrowState space pos heading (Cmds cmd cmds)) = handleStack cmd
               then 
                 nextPos pos heading -- can move to next position
               else 
+                -- undefined -- next object not a lambda or a debris
                 pos -- next object not a lambda or a debris
     
         validNextPos :: Contents -> Bool
         validNextPos content = case content of
             Lambda -> True
             Debris ->  True
+            Empty -> True
             _ -> False
 
     -- take
@@ -204,7 +235,6 @@ step env (ArrowState space pos heading (Cmds cmd cmds)) = handleStack cmd
       DLeft   -> getNewStack (nextPos pos (turnLeft heading))
       DFront  -> getNewStack (nextPos pos heading)
       DRight  -> getNewStack (nextPos pos (turnRight heading))
-
       where
         getNewStack pos'= case L.lookup pos' space of
           Nothing       -> handleAlts alts Boundary -- location doesn't exist so it is a boundery and check with Boundary
@@ -234,10 +264,16 @@ step env (ArrowState space pos heading (Cmds cmd cmds)) = handleStack cmd
 printStep :: Step -> String
 printStep (Fail mes) = "Fail: " ++ mes
 printStep (Ok (ArrowState space pos heading stack)) = 
-    "Ok: " ++ printSpace space ++ " Pos:" ++show pos ++ " Heading:" ++ show heading ++ "\nStack: " ++ show stack
+    "Ok: " ++ printSpace space ++ "\nPos:" ++show pos ++ "\nHeading:" ++ show heading ++ "\nStack: " ++ show stack
 printStep (Done space pos heading) = 
-    "Done: " ++ printSpace space ++ " Pos:" ++show pos ++ " Heading:" ++ show heading
+    "Done: " ++ printSpace space ++ "\nPos:" ++show pos ++ "\nHeading:" ++ show heading
 
 
 
-
+-- Exercise 2
+run :: Parser a b -> [a] -> b
+run parser xs
+  | null p = error "not correct"
+  | otherwise = fst (head p)
+  where
+    p = filter (\(_, s) -> null s) (parse parser xs)
