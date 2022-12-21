@@ -1,4 +1,3 @@
-
 start -> take,
          case front of
            Debris -> go, start, turn right, turn right,
@@ -6,28 +5,28 @@ start -> take,
            _      -> nothing
          end,
          turn right,
-         s2.
+         sa.
 
-s2    -> take,
+sa    -> take,
          case front of
            Debris -> go, start, turn right, turn right,
                      go, turn right, turn right;
            _      -> nothing
          end,
          turn right,
-         s3.
+         sb.
 
 
-s3    -> take,
+sb    -> take,
          case front of
            Debris -> go, start, turn right, turn right,
                      go, turn right, turn right;
            _      -> nothing
          end,
          turn right,
-         s4.
+         sc.
 
-s4    -> take,
+sc    -> take,
          case front of
            Debris -> go, start, turn right, turn right,
                      go, turn right, turn right;

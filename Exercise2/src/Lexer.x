@@ -8,6 +8,7 @@ import Model
 
 $digit = 0-9            -- digits
 $alpha = [a-zA-Z]       -- alphabetic characters
+$ls_ds = [a-zA-Z0-9]           -- letters and digits
 
 tokens :-
 
@@ -34,6 +35,6 @@ tokens :-
   "Debris"      {const TDebris} --???
   "Asteroid"    {const TAsteroid} --???
   "Boundary"    {const TBoundary} --???
-  $alpha+     {\s -> TIdent s}
+  $ls_ds+     {\s -> TIdent s}
   -- .*          ;
 
