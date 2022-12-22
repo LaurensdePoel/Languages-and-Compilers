@@ -3,30 +3,21 @@ module Algebra where
 import Model
 
 -- Exercise 5
-
--- lecture notes page 86
-
--- type PAlgebra p = (p -> p)               -- Program
--- type RAlgebra r = (String -> r -> r)     -- rule
--- type CsAlgebra cs = (cs, cs -> cs)       -- cmds
--- type CAlgebra c = (c, c -> c, c -> c -> c, String -> c) -- cmd
--- type DAlgebra d = d                         -- dir
--- type ASAlgebra as = (as, as -> as -> as)    -- alts
--- type AAlgebra a = (a -> a -> a)             -- alt
--- type PTAlgebra pt = pt                    -- pat
-
-type TESTAlgebra pro rule cmds cmd dir alts alt pat =
+-- The ProgramAlgebra defines the algebra types of the abstract syntax type of Program.
+type ProgramAlgebra pro rule cmds cmd dir alts alt pat =
   ( ([rule] -> pro), -- Program
-    (String -> cmds -> rule),
-    (cmds, cmd -> cmds -> cmds),
-    (cmd, dir -> cmd, dir -> alts -> cmd, String -> cmd),
-    (dir),
-    (alts, alt -> alts -> alts),
-    (pat -> cmds -> alt),
-    (pat, pat, pat, pat, pat, pat)
+    (String -> cmds -> rule), -- Rue
+    (cmds, cmd -> cmds -> cmds), -- Cmds
+    (cmd, dir -> cmd, dir -> alts -> cmd, String -> cmd), -- Cmd
+    (dir), -- Dir
+    (alts, alt -> alts -> alts), -- Alts
+    (pat -> cmds -> alt), -- Alt
+    (pat, pat, pat, pat, pat, pat) -- Pat
   )
 
-fold :: TESTAlgebra p r cs c d as a pt -> Program -> p
+-- the fold function of the ProgramAlgebra is used to compute certain info over the program
+-- (e.g. to check if their aren't any duplicate rules)
+fold :: ProgramAlgebra p r cs c d as a pt -> Program -> p
 fold ((p1), (r1), (cs1, cs2), (c1, c2, c3, c4), (d1), (as1, as2), (a1), (pt1, pt2, pt3, pt4, pt5, pt6)) = fold'
   where
     fold' (Program xs) = p1 (map foldR xs)
@@ -54,21 +45,22 @@ fold ((p1), (r1), (cs1, cs2), (c1, c2, c3, c4), (d1), (as1, as2), (a1), (pt1, pt
     foldPt (PUnderscore) = pt6
 
 -- Exercise 6
--- ghci> checkProgram2 (Program (parser (alexScanTokens "test -> go.")))
+-- This function checks if the program is valid.
+-- It uses the fold function of the ProgramAlgebra to compute these checks.
+-- The below examples can be used to valid the checks.
+-- ghci> checkProgram (Program (parser (alexScanTokens "test -> go.")))
 -- False
--- ghci> checkProgram2 (Program (parser (alexScanTokens "start -> go.")))
+-- ghci> checkProgram (Program (parser (alexScanTokens "start -> go.")))
 -- True
--- ghci> checkProgram2 (Program (parser (alexScanTokens "start -> go, markisgay.")))
+-- ghci> checkProgram (Program (parser (alexScanTokens "start -> go, markisgay.")))
 -- False
--- ghci> checkProgram2 (Program (parser (alexScanTokens "start -> go, markisgay.markisgay -> go.")))
+-- ghci> checkProgram (Program (parser (alexScanTokens "start -> go, markisgay.markisgay -> go.")))
 -- True
--- ghci> checkProgram2 (Program (parser (alexScanTokens "start -> go, markisgay.markisgay -> go.markisgay -> go.")))
+-- ghci> checkProgram (Program (parser (alexScanTokens "start -> go, markisgay.markisgay -> go.markisgay -> go.")))
 -- False
 
 checkProgram :: Program -> Bool
-checkProgram pro = True
-
-checkProgram2 pro =
+checkProgram pro =
   checkUndefinedRules
     && checkStartRule
     && checkDuplicateRules
@@ -77,8 +69,7 @@ checkProgram2 pro =
     checkUndefinedRules :: Bool
     checkUndefinedRules = fold foldUndef pro
 
-    foldUndef :: TESTAlgebra Bool (String, [String]) [String] String Bool Bool Bool Bool
-    -- foldUndef = undefined
+    foldUndef :: ProgramAlgebra Bool (String, [String]) [String] String Bool Bool Bool Bool
     foldUndef = ((p1), (r1), (cs1, cs2), (c1, c2, c3, c4), (d1), (as1, as2), (a1), (pt1, pt2, pt3, pt4, pt5, pt6))
       where
         p1 xs = let (rules1, cmds1) = unzip xs in all (`elem` rules1) (concat cmds1)
@@ -101,9 +92,8 @@ checkProgram2 pro =
         pt6 = False
 
     checkStartRule :: Bool
-    -- checkStartRule = fold (\rules (name, _) _ _ _ _ _ _ -> (any (==True) rules, name == "start", (False,False), (False,False,False,False),False,(False,False),False,False) ) pro
     checkStartRule = fold foldAlgebra pro
-    foldAlgebra :: TESTAlgebra Bool Bool Bool Bool Bool Bool Bool Bool
+    foldAlgebra :: ProgramAlgebra Bool Bool Bool Bool Bool Bool Bool Bool
     foldAlgebra = ((p1), (r1), (cs1, cs2), (c1, c2, c3, c4), (d1), (as1, as2), (a1), (pt1, pt2, pt3, pt4, pt5, pt6))
       where
         p1 xs = any (== True) xs
@@ -128,7 +118,7 @@ checkProgram2 pro =
     checkDuplicateRules :: Bool
     checkDuplicateRules = fold foldDup pro
 
-    foldDup :: TESTAlgebra Bool String Bool Bool Bool Bool Bool Bool
+    foldDup :: ProgramAlgebra Bool String Bool Bool Bool Bool Bool Bool
     foldDup = ((p1), (r1), (cs1, cs2), (c1, c2, c3, c4), (d1), (as1, as2), (a1), (pt1, pt2, pt3, pt4, pt5, pt6))
       where
         p1 xs = fst (foldr (\rule (res, seen) -> if rule `elem` seen then (False, rule : seen) else (res, rule : seen)) (True, []) xs)
@@ -153,7 +143,7 @@ checkProgram2 pro =
     checkPatternMatchFailure :: Bool
     checkPatternMatchFailure = fold foldPattern pro
 
-    foldPattern :: TESTAlgebra Bool Bool Bool Bool Bool ([Pat], [Bool]) (Pat, Bool) Pat
+    foldPattern :: ProgramAlgebra Bool Bool Bool Bool Bool ([Pat], [Bool]) (Pat, Bool) Pat
     foldPattern = ((p1), (r1), (cs1, cs2), (c1, c2, c3, c4), (d1), (as1, as2), (a1), (pt1, pt2, pt3, pt4, pt5, pt6))
       where
         p1 xs = all (== True) xs

@@ -9,43 +9,29 @@ import ParseLib (parse)
 import Parser
 
 -- Exercise 11
+-- This function prints all steps of the program
+-- After each step it asks for user input,
+-- to either invoke the next step or stop iterating over the program.
 interactive :: Environment -> ArrowState -> IO ()
 interactive env state = do
   takeStep env state
   where
     takeStep :: Environment -> ArrowState -> IO ()
-    takeStep env state@(ArrowState _ _ _ st) = do
-      print (show st)
+    takeStep env state = do
       case step env state of
-        Done space pos heading -> do
-          putStrLn $ printSpace space
-          putStrLn ("\nPos:" ++ show pos ++ "\nHeading:" ++ show heading)
-        Ok arrow@(ArrowState space pos heading stack@(Cmds cmd cmds)) -> do
-          print (show stack)
-          -- putStrLn ("Next command: " ++ show cmd)
-          putStrLn $ printSpace space
-          putStrLn ("\nPos:" ++ show pos ++ "\nHeading:" ++ show heading)
-          input <- askInput "Next step (y) or quit (n)\n" ["y", "n"]
+        Done space pos heading -> do printInfo space pos heading
+        Ok arrow@(ArrowState space pos heading stack) -> do
+          printInfo space pos heading
+          putStrLn "Next command:"
+          case stack of
+            (Cmds cmd _) -> print $ show cmd
+            (EmptyC) -> putStrLn "No commands stack is empty"
+          input <- askInput "\nNext step (y) or quit (n)\n" ["y", "n"]
           if input == "y" then takeStep env arrow else putStrLn "Stopped current program!\n"
         Fail messages -> error messages
 
--- interactive :: Environment -> ArrowState -> IO ()
--- interactive env state = do
---   case step env state of
---     Done space pos heading -> do
---       putStrLn $ printSpace space
---       putStrLn ("\nPos:" ++show pos ++ "\nHeading:" ++ show heading)
---     Ok arrow@(ArrowState space pos heading stack) -> do
---       putStrLn $ printSpace space
---       putStrLn ("\nPos:" ++show pos ++ "\nHeading:" ++ show heading)
---       putStrLn "Make a move:\n-1 go\n-2 turn left\n-3 turn right\n-4 mark\n-5 take\n- none\n-7 end\n"
---       val <- getLine
---       if (validInput val ["1","2","3","4","5","6","7"]) then
---         interactive env (ArrowState space pos heading (Cmds Go stack))
---       else
---         putStrLn "invalid input"
---     Fail messages -> putStrLn messages
-
+-- This function runs the program
+-- and prints the final state of the program
 batch :: Environment -> ArrowState -> (Space, Pos, Heading)
 batch = takeStep
   where
@@ -55,74 +41,59 @@ batch = takeStep
         Ok arrowState -> takeStep env arrowState
         Fail messages -> error messages
 
--- This function is just here to play around with and test your lexer/parser.
--- When implementing exercise 11, delete this comment and this function,
--- and write a new main function.
+-- Prints the current state and additional info of the current state
+printInfo :: Space -> Pos -> Heading -> IO ()
+printInfo space pos heading = do
+  putStrLn "---------------------------------------"
+  putStrLn $ printSpace space
+  putStrLn ("Current position:" ++ show pos ++ "\nHeading: " ++ show heading)
+  putStrLn "---------------------------------------"
+
+-- This function ask for a ".space" and ".arrow" as input
+-- and computes the program in the specified states,
+-- which is also asked (user input).
 main :: IO ()
 main = do
-  putStrLn "Welcome to the Arrow program\nPlease enter the path of '.space' file you want to load (e.g. ./examples/SampleSpace.space).\nPath:"
-  -- spaceFilePath <- getLine
-  spaceFile <- readFile "./examples/SampleSpace.space" -- ("./examples/" ++ spaceFilePath)
-  putStrLn "Please enter '.arrow' file path (e.g. ./examples/Add.arrow).\nPath:"
-  pathEnv <- readFile "./examples/RemoveDebris.arrow"
+  -- Ask for the space file
+  putStrLn "Welcome to the Arrow program\nPlease enter the path of '.space' file you want to load (e.g. :\n./examples/SampleSpace.space or\n./examples/AddInput.space).\nPath:"
+  spaceFilePath <- getLine
+  spaceFile <- readFile spaceFilePath -- readFile "./examples/SampleSpace.space" -- ("./examples/" ++ spaceFilePath)
+
+  -- Ask for the arrow file
+  putStrLn "Please enter '.arrow' file path (e.g. :\n./examples/Add.arrow or\n./examples/RemoveDebris.arrow).\nPath:"
+  pathEnv <- getLine -- readFile "./examples/RemoveDebris.arrow"
+  arrowFile <- readFile pathEnv
+
+  -- Ask for the start direction (Heading)
+  direction <- askInput "Select the preferred starting heading:\n- 1. North\n- 2. East\n- 3. South\n- 4. West" ["1", "2", "3", "4"]
+  let startDirection = case direction of
+        "1" -> North
+        "2" -> East
+        "3" -> South
+        _ -> West
+
+  -- run interactive or the batch mode
   mode <- askInput "Select the preferred mode?\n- 1. Interactive\n- 2. Batch\n" ["1", "2"]
   let newSpace = run parseSpace spaceFile
-  -- putStrLn (printSpace newSpace)
-  let env = toEnvironment pathEnv
+  let env = toEnvironment arrowFile
   if mode == "1"
-    then -- then interactive env arrowState
-
-    -- putStrLn "Not inplemented"
-    -- interactive testE (ArrowState newSpace (0,0) East (loadStack testE))
-      interactive env (ArrowState newSpace (0, 0) East (loadStack env))
-    else -- restart programm
-    do
-      -- putStrLn "Please enter '.arrow' file path"
-      -- arrowFile <- getLine
-      -- let env = toEnvironment ("./examples/" ++ arrowFile)
-      -- pathEnv <- readFile "./examples/Add.arrow"
-      -- let env = toEnvironment pathEnv
-
-      let (sp, pos, heading) = batch env (ArrowState newSpace (0, 0) East (loadStack env))
-      putStrLn $ printSpace sp
-      putStrLn ("\nPos:" ++ show pos ++ "\nHeading:" ++ show heading)
+    then interactive env (ArrowState newSpace (0, 0) startDirection (loadStack env))
+    else do
+      let (space, pos, heading) = batch env (ArrowState newSpace (0, 0) startDirection (loadStack env))
+      do printInfo space pos heading
 
   input <- askInput "Run program with other files (y) or quit program (n)\n" ["y", "n"]
   if input == "y" then main else putStrLn "\nMain is done"
 
--- chars <- readFile "examples/Add.arrow"
--- putStrLn "Input program:"
--- putStrLn ""
--- putStrLn chars
--- putStrLn ""
--- let tokens = alexScanTokens chars
--- putStrLn "Tokens:"
--- putStrLn ""
--- print tokens
--- let arr = parser tokens
--- putStrLn ""
--- putStrLn "Parsed program:"
--- putStrLn ""
--- putStrLn "\nMain is done"
-
-validInput :: String -> [String] -> Bool
-validInput input = any ((== True) . (input ==))
-
+-- This function handles questions,
+-- returns the answer if it is valid,
+-- otherwise ask the question again.
 askInput :: String -> [String] -> IO String
 askInput question validValues = do
   putStrLn question
   val <- getLine
-  if (validInput val validValues)
+  if val `elem` validValues
     then return val
     else do
       putStrLn "Invalid input please enter correct input."
       askInput question validValues
-
--- return ""
-
--- 1. go
--- 2. case
--- 1. left
--- 2. front
--- 3. right
---

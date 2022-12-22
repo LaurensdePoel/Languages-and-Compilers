@@ -28,29 +28,10 @@ import Model
   "Debris"  {TDebris}
   "Asteroid" {TAsteroid}
   "Boundary" {TBoundary}
-  "Empty"    {TEmpty} -- What to do with this?
+  "Empty"    {TEmpty}
   ident    {TIdent $$}
-  -- x { Token }
 
 %%
-
--- Program : Program '.' rule          {$3 : $1}
---         | rule '.'                  { Program [$1] }
---         | {- empty -}               { [] }
-        
--- rule : string "->" cmds '.'            {Rule $1 $3}
-
--- Program :: { [Rule] }
-
--- exp = [Rule] Rule Cmds Cmd Dir Alts Alt Pat
--- acc = Program Rule Cmds Cmd Dir Alts Alt Pat
-
--- meant = Program Rule Cmds Cmd Dir Alts Alt Pat
-
--- recursive 
--- Program : Program rule          {$2 : $1}
---         | rule                 { [$1] }
---         | {- empty -}               { [] }
 
 Program : rule Program              {$1 : $2}
         | rule                      { [$1] }

@@ -89,8 +89,8 @@ printSpace m = printSize ++ printRows 0
     printRow :: Pos -> String
     printRow pos@(y, x)
       | x <= maxX = case L.lookup pos m of
-          Nothing -> error "Key not in map"
-          Just c -> convertContentToChar c : printRow (y, x + 1)
+        Nothing -> error "Key not in map"
+        Just c -> convertContentToChar c : printRow (y, x + 1)
       | otherwise = "\n"
 
     printRows :: Int -> String
@@ -99,30 +99,6 @@ printSpace m = printSize ++ printRows 0
       | otherwise = ""
 
     (maxY, maxX) = fst (L.findMax m)
-
--- -- Exercise 7
--- printSpace :: Space -> String
--- printSpace m = printSize ++ printRows 0
---     where
---       convertContentToChar :: Contents -> Char
---       convertContentToChar x = case lookup x contentsTable of
---           Nothing -> error "Content not in contents list"
---           Just x -> x
-
---       printSize :: String
---       printSize = "(" ++ show maxX ++ "," ++ show maxY ++ ")\n"
-
---       printRow :: Pos -> String
---       printRow pos@(x,y) | x <= maxX = case L.lookup pos m of
---                                   Nothing -> error "Key not in map"
---                                   Just c ->  convertContentToChar c : printRow (x+1,y)
---                   | otherwise = "\n"
-
---       printRows :: Int -> String
---       printRows y | y <= maxY = printRow (0,y) ++ printRows (y+1)
---                   | otherwise = ""
-
---       (maxX, maxY) = fst (L.findMax m)
 
 -- These three should be defined by you
 type Ident = String
@@ -178,7 +154,6 @@ loadStack env = case L.lookup "start" env of
 -- | Exercise 9
 -- putStrLn $ printStep $ step testEnvironment2 testArrowState
 step :: Environment -> ArrowState -> Step
--- step env (ArrowState space pos heading stack) = undefined
 step env (ArrowState space pos heading EmptyC) = Done space pos heading
 step env (ArrowState space pos heading (Cmds cmd cmds)) = handleStack cmd
   where
@@ -255,8 +230,6 @@ step env (ArrowState space pos heading (Cmds cmd cmds)) = handleStack cmd
         getNewStack pos' = case L.lookup pos' space of
           Nothing -> handleAlts alts Boundary -- location doesn't exist so it is a boundery and check with Boundary
           Just content -> handleAlts alts content -- check with current content
-          -- where
-          --   contentOf :: Contents
         handleAlts :: Alts -> Contents -> Step
         handleAlts EmptyA content = Fail "There are not options defined in the Case statement"
         handleAlts (Alts (Alt pat newCmds) alts) content
