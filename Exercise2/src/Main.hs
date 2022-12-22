@@ -62,9 +62,9 @@ main :: IO ()
 main = do
   putStrLn "Welcome to the Arrow program\nPlease enter the path of '.space' file you want to load (e.g. ./examples/SampleSpace.space).\nPath:"
   -- spaceFilePath <- getLine
-  spaceFile <- readFile "./examples/AddInput.space" -- ("./examples/" ++ spaceFilePath)
+  spaceFile <- readFile "./examples/SampleSpace.space" -- ("./examples/" ++ spaceFilePath)
   putStrLn "Please enter '.arrow' file path (e.g. ./examples/Add.arrow).\nPath:"
-  pathEnv <- readFile "./examples/Add.arrow"
+  pathEnv <- readFile "./examples/RemoveDebris.arrow"
   mode <- askInput "Select the preferred mode?\n- 1. Interactive\n- 2. Batch\n" ["1", "2"]
   let newSpace = run parseSpace spaceFile
   -- putStrLn (printSpace newSpace)

@@ -29,12 +29,12 @@ tokens :-
   "right"     {const TRight}
   "front"     {const TFront}
   ";"        {const TSemicolon}
-  "_"         {const TUnderscore}
   "Empty"     {const TEmpty} --???
   "Lambda"       {const TLambda} --???
   "Debris"      {const TDebris} --???
   "Asteroid"    {const TAsteroid} --???
   "Boundary"    {const TBoundary} --???
-  $ls_ds+     {\s -> TIdent s}
+  "_"         {const TUnderscore}
+  $alpha [$alpha $digit \+ \-]+     {\s -> TIdent s}
   -- .*          ;
 
