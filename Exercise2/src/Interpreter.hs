@@ -21,22 +21,6 @@ type Pos = (Int, Int)
 
 type Space = Map Pos Contents
 
-testSpace :: Space
-testSpace =
-  L.fromList
-    [ ((0, 0), Empty),
-      ((1, 0), Empty),
-      ((2, 0), Empty),
-      ((0, 1), Empty),
-      ((1, 1), Empty),
-      ((2, 1), Empty),
-      ((0, 2), Empty),
-      ((1, 2), Empty),
-      ((2, 2), Empty)
-    ]
-
-test = putStrLn (printSpace testSpace)
-
 -- | Parses a space file, such as the ones in the examples folder.
 parseSpace :: Parser Char Space
 parseSpace = do
@@ -122,6 +106,10 @@ data Step
   | Fail String
 
 -- | Exercise 8
+-- This function converts a string to an Environment data type.
+-- It Parses the string to a program, validates the program
+-- (gives an error if this is not the case),
+-- and converts the program into an Environment.
 toEnvironment :: String -> Environment
 toEnvironment xs
   | checkProgram program = createEnviroment program
@@ -136,8 +124,27 @@ toEnvironment xs
     makePair :: Rule -> (Ident, Commands)
     makePair (Rule s c) = (s, c)
 
-testE :: Map Ident Commands
-testE = L.fromList [("start", EmptyC)]
+-- | Exercise 9
+-- The following command can be used to test the step function:
+-- ghci> putStrLn $ printStep $ step testEnvironment2 testArrowState
+
+-----------------------------------------------------------------
+-- The following variables are defined to test the step function,
+-- and/or related functions
+
+testSpace :: Space
+testSpace =
+  L.fromList
+    [ ((0, 0), Empty),
+      ((1, 0), Empty),
+      ((2, 0), Empty),
+      ((0, 1), Empty),
+      ((1, 1), Empty),
+      ((2, 1), Empty),
+      ((0, 2), Empty),
+      ((1, 2), Empty),
+      ((2, 2), Empty)
+    ]
 
 testEnvironment, testEnvironment2 :: Environment
 testEnvironment = toEnvironment "start     -> take."
@@ -146,13 +153,16 @@ testEnvironment2 = toEnvironment "start    -> case left of Boundary -> turn righ
 testArrowState :: ArrowState
 testArrowState = ArrowState testSpace (2, 2) North (loadStack testEnvironment)
 
+-- This function converts an Environment into a Stack
 loadStack :: Environment -> Stack
 loadStack env = case L.lookup "start" env of
   Nothing -> error "Key not found in testStack"
   Just x -> x
 
--- | Exercise 9
--- putStrLn $ printStep $ step testEnvironment2 testArrowState
+-----------------------------------------------------------------
+
+-- This function executes this first command (on the stack) of the program.
+-- Updates the space, position, heading and the stack of commands.
 step :: Environment -> ArrowState -> Step
 step env (ArrowState space pos heading EmptyC) = Done space pos heading
 step env (ArrowState space pos heading (Cmds cmd cmds)) = handleStack cmd

@@ -57,12 +57,12 @@ main = do
   -- Ask for the space file
   putStrLn "Welcome to the Arrow program\nPlease enter the path of '.space' file you want to load (e.g. :\n./examples/SampleSpace.space or\n./examples/AddInput.space).\nPath:"
   spaceFilePath <- getLine
-  spaceFile <- readFile spaceFilePath -- readFile "./examples/SampleSpace.space" -- ("./examples/" ++ spaceFilePath)
+  spaceFile <- readFile spaceFilePath -- readFile "./examples/SampleSpace.space"
 
   -- Ask for the arrow file
   putStrLn "Please enter '.arrow' file path (e.g. :\n./examples/Add.arrow or\n./examples/RemoveDebris.arrow).\nPath:"
-  pathEnv <- getLine -- readFile "./examples/RemoveDebris.arrow"
-  arrowFile <- readFile pathEnv
+  pathEnv <- getLine
+  arrowFile <- readFile pathEnv -- readFile "./examples/RemoveDebris.arrow"
 
   -- Ask for the start direction (Heading)
   direction <- askInput "Select the preferred starting heading:\n- 1. North\n- 2. East\n- 3. South\n- 4. West" ["1", "2", "3", "4"]
