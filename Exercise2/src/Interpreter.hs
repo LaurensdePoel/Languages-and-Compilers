@@ -59,6 +59,8 @@ contentsTable =
   ]
 
 -- Exercise 7
+-- This function converts a Space into a string, which represent the space 
+-- in a text format, which can be printed.
 printSpace :: Space -> String
 printSpace m = printSize ++ printRows 0
   where
@@ -84,7 +86,7 @@ printSpace m = printSize ++ printRows 0
 
     (maxY, maxX) = fst (L.findMax m)
 
--- These three should be defined by you
+
 type Ident = String
 
 type Commands = Cmds
@@ -266,7 +268,7 @@ printStep (Ok (ArrowState space pos heading stack)) =
 printStep (Done space pos heading) =
   "Done: " ++ printSpace space ++ "\nPos:" ++ show pos ++ "\nHeading:" ++ show heading
 
--- Exercise 2
+-- This function is used to parse a string with a given parser.
 run :: Parser a b -> [a] -> b
 run parser xs
   | null p = error "not correct"

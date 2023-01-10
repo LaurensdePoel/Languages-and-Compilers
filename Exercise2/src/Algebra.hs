@@ -164,5 +164,6 @@ checkProgram pro =
         pt4 = PAsteroid
         pt5 = PBoundary
         pt6 = PUnderscore
+
         contents :: [Pat]
         contents = [PEmpty, PLambda, PDebris, PAsteroid, PBoundary]

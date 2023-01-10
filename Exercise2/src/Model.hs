@@ -1,6 +1,7 @@
 module Model where
 
 -- Exercise 1
+-- The Token datatype represents tokens which are returned by the lexer/scanner.
 data Token
   = TArrow
   | TPoint
@@ -17,16 +18,18 @@ data Token
   | TRight
   | TFront
   | TSemicolon
-  | TUnderscore
   | TIdent String
   | TEmpty
   | TLambda
   | TDebris
   | TAsteroid
   | TBoundary
+  | TUnderscore
   deriving (Show)
 
 -- Exercise 2
+-- Abstract syntax which describes the arrow language
+-- The Program datatype is the starting nonterminal
 data Program = Program [Rule] deriving (Show)
 
 data Rule = Rule String Cmds
